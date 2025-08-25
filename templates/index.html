@@ -1,0 +1,38 @@
+﻿{% extends "layout.html" %}{% block body %}
+<section class="max-w-7xl mx-auto px-4 py-10">
+  <div class="grid lg:grid-cols-2 gap-8 items-center">
+    <div>
+      <h1 class="text-4xl font-extrabold mb-3">One of the most secure whistleblowing portals in the UK.</h1>
+      <p class="text-base-muted mb-6">Modern, secure and anonymous — protect your company, your staff and your service users. If you already have a solution, check our price promise.</p>
+      <div class="flex gap-3">
+        <a class="px-4 py-2 rounded-lg bg-neon-green text-white" href="{{ url_for('report') }}">Make a Report</a>
+        <a class="px-4 py-2 rounded-lg bg-neutral-200" href="{{ url_for('how') }}">How it works</a>
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl p-6 border shadow-glass">
+      <div class="aspect-video rounded-xl overflow-hidden bg-neutral-100 flex items-center justify-center">
+        {% if youtube_url %}
+          <iframe class="w-full h-full" src="{{ youtube_url }}" allowfullscreen></iframe>
+        {% else %}
+          <div class="text-base-muted">Add a video in Admin → Settings (YouTube URL)</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-10 grid md:grid-cols-3 gap-6">
+    <div class="bg-white rounded-xl p-5 border shadow-glass">
+      <div class="font-bold mb-2">Anonymous by default</div>
+      <div class="text-sm text-base-muted">Reporters can stay anonymous; company code only — no company names shown publicly.</div>
+    </div>
+    <div class="bg-white rounded-xl p-5 border shadow-glass">
+      <div class="font-bold mb-2">Two-way secure chats</div>
+      <div class="text-sm text-base-muted">Separate chats: Admin↔Reporter and Admin↔Manager — strictly isolated.</div>
+    </div>
+    <div class="bg-white rounded-xl p-5 border shadow-glass">
+      <div class="font-bold mb-2">Simple pricing</div>
+      <div class="text-sm text-base-muted">£150 per year flat. Unlimited report recipients.</div>
+    </div>
+  </div>
+</section>
+{% endblock %}

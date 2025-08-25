@@ -1,0 +1,26 @@
+﻿{% extends "admin/frame.html" %}{% block admin %}
+<h2 class="text-2xl font-extrabold mb-4">Companies</h2>
+<form method="post" class="bg-white rounded-xl p-4 border shadow-glass grid md:grid-cols-3 gap-4 mb-4">
+  <div><label class="block text-sm mb-1">Name</label><input name="name" class="w-full rounded-lg border px-3 py-2" required></div>
+  <div><label class="block text-sm mb-1">Company Code (auto or custom)</label><input name="code" class="w-full rounded-lg border px-3 py-2" placeholder="Leave blank for auto"></div>
+  <div class="flex items-end"><button class="px-4 py-2 rounded-lg bg-neon-blue text-white">Add Company</button></div>
+</form>
+<div class="bg-white rounded-xl p-4 border shadow-glass">
+  <table class="w-full text-sm">
+    <tr class="text-left border-b"><th class="py-2">Name</th><th>Code</th><th>Created</th><th></th></tr>
+    {% for c in companies %}
+      <tr class="border-b">
+        <td class="py-2">{{ c.name }}</td>
+        <td><code>{{ c.code }}</code></td>
+        <td>{{ c.created_at[:10] }}</td>
+        <td>
+          <a class="text-neon-blue mr-3" href="{{ url_for('admin_company', company_id=c.id) }}">Open</a>
+          <form method="post" action="{{ url_for('admin_company_delete', company_id=c.id) }}" style="display:inline" onsubmit="return confirm('Delete company and its reports?')">
+            <button class="text-red-600">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

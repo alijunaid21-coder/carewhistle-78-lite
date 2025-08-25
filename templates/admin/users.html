@@ -1,0 +1,32 @@
+﻿{% extends "admin/frame.html" %}{% block admin %}
+<h2 class="text-2xl font-extrabold mb-4">Users</h2>
+<form method="post" class="bg-white rounded-xl p-4 border shadow-glass grid md:grid-cols-3 gap-4 mb-4">
+  <div><label class="block text-sm mb-1">Email</label><input name="email" required class="w-full rounded-lg border px-3 py-2"></div>
+  <div><label class="block text-sm mb-1">Password</label><input name="password" required class="w-full rounded-lg border px-3 py-2"></div>
+  <div>
+    <label class="block text-sm mb-1">Company (for manager)</label>
+    <select name="company_id" class="w-full rounded-lg border px-3 py-2"><option value="">— none — (admin)</option>
+      {% for c in companies %}<option value="{{ c.id }}">{{ c.name }} ({{ c.code }})</option>{% endfor %}
+    </select>
+  </div>
+  <div class="md:col-span-3"><button class="px-4 py-2 rounded-lg bg-neon-blue text-white">Create Manager</button></div>
+</form>
+
+<div class="bg-white rounded-xl p-4 border shadow-glass">
+  <table class="w-full text-sm">
+    <tr class="text-left border-b"><th class="py-2">ID</th><th>Email</th><th>Role</th><th>Company</th><th></th></tr>
+    {% for u in users %}
+    <tr class="border-b">
+      <td class="py-2">{{ u.id }}</td><td>{{ u.email }}</td><td>{{ u.role }}</td><td>{{ u.company or '' }} {{ u.code and '(' ~ u.code ~ ')' }}</td>
+      <td>
+        {% if u.role!='admin' %}
+        <form method="post" action="{{ url_for('admin_user_delete', user_id=u.id) }}" onsubmit="return confirm('Delete user?')" style="display:inline">
+          <button class="text-red-600">Delete</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

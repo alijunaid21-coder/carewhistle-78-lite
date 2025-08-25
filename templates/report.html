@@ -1,0 +1,55 @@
+﻿{% extends "layout.html" %}{% block body %}
+<section class="max-w-3xl mx-auto px-4 py-10">
+  <h2 class="text-3xl font-extrabold mb-4">Make a Report</h2>
+  <form method="post" class="bg-white rounded-2xl p-6 border shadow-glass grid gap-4">
+    <div>
+      <label class="block text-sm mb-1">Company Code</label>
+      <input name="company_code" required class="w-full rounded-lg border px-3 py-2" placeholder="e.g. BR1G7">
+      <p class="text-xs text-base-muted mt-1">Use the Company Code provided by your employer — company names are not shown here.</p>
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Category</label>
+      <select name="category" class="w-full rounded-lg border px-3 py-2">
+        {% for c in categories %}<option>{{ c }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Subject (optional)</label>
+      <input name="subject" maxlength="140" class="w-full rounded-lg border px-3 py-2" placeholder="Short title">
+    </div>
+    <div>
+      <label class="block text-sm mb-1">How would you like to report?</label>
+      <div class="flex gap-6 text-sm">
+        <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="anonymous" checked> Anonymous</label>
+        <label class="inline-flex items-center gap-2"><input type="radio" name="mode" value="confidential"> Confidential</label>
+      </div>
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Contact (optional for confidential)</label>
+      <input name="contact" class="w-full rounded-lg border px-3 py-2" placeholder="Email or phone if you want us to reach you">
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Describe your concern</label>
+      <textarea name="content" rows="6" required class="w-full rounded-lg border px-3 py-2" placeholder="Include dates, locations, people involved."></textarea>
+    </div>
+    <div>
+      <label class="block text-sm mb-1">What have you done so far?</label>
+      <textarea name="done_so_far" rows="3" class="w-full rounded-lg border px-3 py-2" placeholder="Contacted regulators or informed management?"></textarea>
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Would you like feedback after investigation?</label>
+      <select name="wants_feedback" class="w-full rounded-lg border px-3 py-2"><option>Yes</option><option>No</option></select>
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Memorable word & best time to contact (optional)</label>
+      <textarea name="memorable" rows="2" class="w-full rounded-lg border px-3 py-2" placeholder="Memorable word, preferred contact time"></textarea>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-sm">Prove you're human: </span>
+      <span class="font-bold">{{ captcha_a }} + {{ captcha_b }} =</span>
+      <input name="captcha_answer" required class="rounded-lg border px-3 py-1 w-24">
+    </div>
+    <button class="mt-2 px-4 py-2 rounded-lg bg-neon-blue text-white">Submit Report</button>
+  </form>
+</section>
+{% endblock %}

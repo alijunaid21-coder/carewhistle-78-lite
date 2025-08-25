@@ -1,0 +1,44 @@
+﻿{% extends "admin/frame.html" %}{% block admin %}
+<h2 class="text-2xl font-extrabold mb-2">Report #{{ r.id }}</h2>
+<div class="text-sm text-base-muted mb-4">Company Code: <code>{{ r.company_code }}</code> • Category: {{ r.category }} • Status: <b>{{ r.status }}</b> • Created: {{ r.created_at }}</div>
+<div class="grid lg:grid-cols-2 gap-4">
+  <div class="bg-white rounded-xl p-4 border shadow-glass">
+    <div class="font-bold mb-2">Report details (admin only)</div>
+    <div class="text-sm whitespace-pre-line">{{ r.content }}</div>
+    <form method="post" class="mt-4">
+      <input type="hidden" name="action" value="status">
+      <label class="block text-sm mb-1">Change status</label>
+      <select name="status" class="rounded-lg border px-3 py-2">
+        {% for s in statuses %}<option value="{{ s }}" {% if s==r.status %}selected{% endif %}>{{ s }}</option>{% endfor %}
+      </select>
+      <button class="ml-2 px-3 py-2 rounded-lg bg-neutral-800 text-white">Update</button>
+    </form>
+  </div>
+  <div class="bg-white rounded-xl p-4 border shadow-glass">
+    <div class="grid md:grid-cols-2 gap-4">
+      <div>
+        <div class="font-bold mb-2">Chat with Reporter</div>
+        <div class="max-h-[260px] overflow-auto space-y-2 border rounded-lg p-2 bg-neutral-50">
+          {% for m in msgs_rep %}<div><div class="text-xs text-base-muted">{{ m.created_at }} — {{ m.sender }}</div><div>{{ m.body }}</div></div>{% endfor %}
+        </div>
+        <form method="post" class="mt-2">
+          <input type="hidden" name="action" value="msg_rep">
+          <textarea name="body" rows="2" class="w-full rounded-lg border px-3 py-2" required></textarea>
+          <button class="mt-2 px-3 py-2 rounded-lg bg-neon-blue text-white">Send</button>
+        </form>
+      </div>
+      <div>
+        <div class="font-bold mb-2">Chat with Manager</div>
+        <div class="max-h-[260px] overflow-auto space-y-2 border rounded-lg p-2 bg-neutral-50">
+          {% for m in msgs_mgr %}<div><div class="text-xs text-base-muted">{{ m.created_at }} — {{ m.sender }}</div><div>{{ m.body }}</div></div>{% endfor %}
+        </div>
+        <form method="post" class="mt-2">
+          <input type="hidden" name="action" value="msg_mgr">
+          <textarea name="body" rows="2" class="w-full rounded-lg border px-3 py-2" required></textarea>
+          <button class="mt-2 px-3 py-2 rounded-lg bg-neon-purple text-white">Send</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

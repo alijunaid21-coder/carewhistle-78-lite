@@ -1,0 +1,31 @@
+﻿{% extends "admin/frame.html" %}{% block admin %}
+<h2 class="text-2xl font-extrabold mb-4">Reports</h2>
+<form class="bg-white rounded-xl p-4 border shadow-glass grid md:grid-cols-5 gap-3 mb-4" method="get">
+  <input class="rounded-lg border px-3 py-2" name="q" value="{{ q or '' }}" placeholder="Search by subject">
+  <input class="rounded-lg border px-3 py-2" name="company_code" value="{{ company_code or '' }}" placeholder="Company Code">
+  <select class="rounded-lg border px-3 py-2" name="status">
+    <option value="">Any status</option>
+    {% for s in statuses %}<option value="{{ s }}" {% if s==status %}selected{% endif %}>{{ s }}</option>{% endfor %}
+  </select>
+  <select class="rounded-lg border px-3 py-2" name="category">
+    <option value="">Any category</option>
+    {% for c in categories %}<option {% if c==category %}selected{% endif %}>{{ c }}</option>{% endfor %}
+  </select>
+  <button class="px-4 py-2 rounded-lg bg-neutral-800 text-white">Filter</button>
+</form>
+<div class="bg-white rounded-xl p-4 border shadow-glass">
+  <table class="w-full text-sm">
+    <tr class="text-left border-b"><th class="py-2">ID</th><th>Company</th><th>Category</th><th>Status</th><th>Created</th><th></th></tr>
+    {% for r in rows %}
+      <tr class="border-b">
+        <td class="py-2">{{ r.id }}</td>
+        <td><code>{{ r.company_code }}</code></td>
+        <td>{{ r.category }}</td>
+        <td>{{ r.status }}</td>
+        <td>{{ r.created_at[:19] }}</td>
+        <td><a class="text-neon-blue" href="{{ url_for('admin_report_detail', rid=r.id) }}">Open</a></td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

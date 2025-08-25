@@ -1,0 +1,23 @@
+﻿{% extends "manager/frame.html" %}{% block manager %}
+<h2 class="text-2xl font-extrabold mb-4">Overview</h2>
+<div class="grid md:grid-cols-3 gap-4">
+  <div class="bg-white rounded-xl p-4 border shadow-glass"><div class="text-base-muted">Assigned</div><div class="text-3xl font-extrabold">{{ stats.assigned or 0 }}</div></div>
+  <div class="bg-white rounded-xl p-4 border shadow-glass"><div class="text-base-muted">New</div><div class="text-3xl font-extrabold">{{ stats.new or 0 }}</div></div>
+  <div class="bg-white rounded-xl p-4 border shadow-glass"><div class="text-base-muted">Closed</div><div class="text-3xl font-extrabold">{{ stats.closed or 0 }}</div></div>
+</div>
+<div class="grid lg:grid-cols-2 gap-4 mt-6">
+  <div class="bg-white rounded-xl p-4 border shadow-glass"><canvas id="m"></canvas></div>
+  <div class="bg-white rounded-xl p-4 border shadow-glass"><canvas id="c"></canvas></div>
+</div>
+<script>
+const colors=["#3b82f6","#22c55e","#ec4899","#8b5cf6","#f59e0b","#06b6d4","#64748b","#ef4444"];
+new Chart(document.getElementById('m'), {
+  type:'line', data:{labels:{{ monthly|map(attribute='ym')|list|tojson }},
+  datasets:[{label:'Reports',data:{{ monthly|map(attribute='cnt')|list|tojson }}, borderColor:colors[1]}]}
+});
+new Chart(document.getElementById('c'), {
+  type:'bar', data:{labels:{{ bycat|map(attribute='category')|list|tojson }},
+  datasets:[{label:'By Category',data:{{ bycat|map(attribute='cnt')|list|tojson }}, backgroundColor:colors}]}
+});
+</script>
+{% endblock %}

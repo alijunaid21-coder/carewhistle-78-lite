@@ -1,0 +1,17 @@
+﻿{% extends "layout.html" %}{% block body %}
+<div class="max-w-7xl mx-auto px-4 py-8 grid lg:grid-cols-[240px_1fr] gap-6">
+  <aside class="bg-white rounded-xl p-4 border shadow-glass h-max">
+    <div class="font-extrabold mb-2">CareWhistle Admin</div>
+    <nav class="grid gap-1 text-sm">
+      <a class="px-3 py-2 rounded hover:bg-neutral-100 {% if request.endpoint=='admin_dashboard' %}bg-neutral-100{% endif %}" href="{{ url_for('admin_dashboard') }}">Overview</a>
+      <a class="px-3 py-2 rounded hover:bg-neutral-100 {% if 'admin_company' in request.endpoint %}bg-neutral-100{% endif %}" href="{{ url_for('admin_companies') }}">Companies</a>
+      <a class="px-3 py-2 rounded hover:bg-neutral-100 {% if 'admin_reports' in request.endpoint %}bg-neutral-100{% endif %}" href="{{ url_for('admin_reports') }}">Reports</a>
+      <a class="px-3 py-2 rounded hover:bg-neutral-100 {% if request.endpoint=='admin_users' %}bg-neutral-100{% endif %}" href="{{ url_for('admin_users') }}">Users</a>
+      <a class="px-3 py-2 rounded hover:bg-neutral-100 {% if request.endpoint=='admin_media' %}bg-neutral-100{% endif %}" href="{{ url_for('admin_media') }}">Media</a>
+      <a class="px-3 py-2 rounded hover:bg-neutral-100 {% if request.endpoint=='admin_settings' %}bg-neutral-100{% endif %}" href="{{ url_for('admin_settings') }}">Settings</a>
+      <a class="px-3 py-2 rounded hover:bg-neutral-100 {% if request.endpoint=='admin_notifications' %}bg-neutral-100{% endif %}" href="{{ url_for('admin_notifications') }}">Notifications</a>
+    </nav>
+  </aside>
+  <main>{% block admin %}{% endblock %}</main>
+</div>
+{% endblock %}

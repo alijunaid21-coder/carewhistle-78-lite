@@ -1,0 +1,13 @@
+﻿{% extends "layout.html" %}{% block body %}
+<section class="max-w-xl mx-auto px-4 py-10">
+  <div class="bg-white rounded-2xl p-6 border shadow-glass">
+    <h2 class="text-2xl font-extrabold mb-2">Report submitted</h2>
+    <p class="text-base-muted mb-4">Save your case credentials to follow up or send messages:</p>
+    <div class="grid gap-2">
+      <div><b>Case code:</b> <code>{{ token }}</code></div>
+      <div><b>PIN:</b> <code>{{ pin }}</code></div>
+    </div>
+    <a class="mt-4 inline-block px-4 py-2 rounded-lg bg-neutral-800 text-white" href="{{ url_for('follow') }}">Open case portal</a>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,71 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ title or "CareWhistle" }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme:{
+        extend:{
+          colors:{
+            base: { bg:"#f7f8fb", card:"#ffffff", ink:"#111827", muted:"#6b7280" },
+            neon: { blue:"#3b82f6", green:"#22c55e", pink:"#ec4899", purple:"#8b5cf6", amber:"#f59e0b", cyan:"#06b6d4" }
+          },
+          boxShadow:{
+            glass:"0 10px 30px rgba(31,41,55,.08), inset 0 1px 0 rgba(255,255,255,.5)"
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Ctext y='50'%3E%F0%9F%9A%A8%3C/text%3E%3C/svg%3E">
+</head>
+<body class="bg-base-bg text-base-ink">
+  <header class="sticky top-0 z-40 backdrop-blur bg-white/80 border-b">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
+      <a href="{{ url_for('home') }}" class="flex items-center gap-2 font-extrabold text-lg">
+        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-neon-blue text-white shadow-glass">🔔</span>
+        <span>CareWhistle</span>
+      </a>
+      <nav class="ml-6 flex items-center gap-4 text-sm">
+        <a class="hover:text-neon-blue" href="{{ url_for('home') }}">Home</a>
+        <a class="hover:text-neon-blue" href="{{ url_for('how') }}">How it works</a>
+        <a class="hover:text-neon-blue" href="{{ url_for('report') }}">Make a Report</a>
+        <a class="hover:text-neon-blue" href="{{ url_for('pricing') }}">Plans & Pricing</a>
+      </nav>
+      <div class="ml-auto flex items-center gap-2">
+        <a class="px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200" href="{{ url_for('follow') }}">Case Portal</a>
+        {% if session.get('user_id') %}
+          {% if session.get('role')=='admin' %}
+            <a class="px-3 py-1.5 rounded-lg bg-neon-blue text-white" href="{{ url_for('admin_dashboard') }}">Admin</a>
+          {% elif session.get('role')=='manager' %}
+            <a class="px-3 py-1.5 rounded-lg bg-neon-purple text-white" href="{{ url_for('manager_overview') }}">Manager</a>
+          {% endif %}
+          <a class="px-3 py-1.5 rounded-lg bg-neutral-800 text-white" href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+          <a class="px-3 py-1.5 rounded-lg bg-neutral-800 text-white" href="{{ url_for('login') }}">Login</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  {% with msgs = get_flashed_messages(with_categories=True) %}
+    {% if msgs %}
+    <div class="max-w-4xl mx-auto mt-4 px-4">
+      {% for c,m in msgs %}
+        <div class="mb-2 px-4 py-2 rounded-lg border bg-white shadow">{{ m }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block body %}{% endblock %}
+
+  <footer class="mt-16 py-8 text-center text-sm text-base-muted">
+    © {{ 2025 }} CareWhistle — Independent whistleblowing service. <span class="mx-2">•</span> help@carewhistle.app
+  </footer>
+</body>
+</html>

@@ -1,0 +1,16 @@
+﻿{% extends "layout.html" %}{% block body %}
+<section class="max-w-xl mx-auto px-4 py-10">
+  <h2 class="text-3xl font-extrabold mb-4">Case Portal</h2>
+  <form method="post" class="bg-white rounded-2xl p-6 border shadow-glass grid gap-4">
+    <div>
+      <label class="block text-sm mb-1">Case code</label>
+      <input name="token" required class="w-full rounded-lg border px-3 py-2">
+    </div>
+    <div>
+      <label class="block text-sm mb-1">PIN</label>
+      <input name="pin" required class="w-full rounded-lg border px-3 py-2">
+    </div>
+    <button class="px-4 py-2 rounded-lg bg-neon-blue text-white">Open</button>
+  </form>
+</section>
+{% endblock %}

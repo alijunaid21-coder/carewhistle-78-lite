@@ -1,0 +1,14 @@
+﻿{% extends "manager/frame.html" %}{% block manager %}
+<h2 class="text-2xl font-extrabold mb-4">Messages</h2>
+<div class="bg-white rounded-xl p-4 border shadow-glass">
+  <table class="w-full text-sm">
+    <tr class="text-left border-b"><th class="py-2">Report ID</th><th>Company Code</th><th>Last Update</th><th></th></tr>
+    {% for r in reports %}
+      <tr class="border-b">
+        <td class="py-2">{{ r.id }}</td><td><code>{{ r.company_code }}</code></td><td>{{ r.updated }}</td>
+        <td><a class="text-neon-blue" href="{{ url_for('manager_messages_thread', rid=r.id) }}">Open</a></td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

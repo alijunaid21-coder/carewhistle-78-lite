@@ -1,0 +1,13 @@
+﻿{% extends "layout.html" %}{% block body %}
+<div class="max-w-7xl mx-auto px-4 py-8 grid lg:grid-cols-[240px_1fr] gap-6">
+  <aside class="bg-white rounded-xl p-4 border shadow-glass h-max">
+    <div class="font-extrabold mb-2">Manager</div>
+    <nav class="grid gap-1 text-sm">
+      <a class="px-3 py-2 rounded hover:bg-neutral-100 {% if request.endpoint=='manager_overview' %}bg-neutral-100{% endif %}" href="{{ url_for('manager_overview') }}">Overview</a>
+      <a class="px-3 py-2 rounded hover:bg-neutral-100 {% if 'manager_messages' in request.endpoint %}bg-neutral-100{% endif %}" href="{{ url_for('manager_messages') }}">Messages</a>
+      <a class="px-3 py-2 rounded hover:bg-neutral-100 {% if request.endpoint=='manager_notifications' %}bg-neutral-100{% endif %}" href="{{ url_for('manager_notifications') }}">Notifications</a>
+    </nav>
+  </aside>
+  <main>{% block manager %}{% endblock %}</main>
+</div>
+{% endblock %}
