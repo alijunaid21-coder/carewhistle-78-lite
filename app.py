@@ -237,8 +237,17 @@ def reporter_access_required(f):
 @reporter_access_required
 def follow_thread(token):
     db=get_db()
-    r=db.execute("SELECT id,company_code,anon_token,status FROM reports WHERE anon_token=?", (token,)).fetchone()
-    msgs=db.execute("SELECT created_at,sender,body FROM messages WHERE report_id=? AND channel='rep' ORDER BY id", (r["id"],)).fetchall()
+    r=db.execute(
+        "SELECT id,company_code,anon_token,status FROM reports WHERE anon_token=?",
+        (token,),
+    ).fetchone()
+    if not r:
+        db.close()
+        abort(404)
+    msgs=db.execute(
+        "SELECT created_at,sender,body FROM messages WHERE report_id=? AND channel='rep' ORDER BY id",
+        (r["id"],),
+    ).fetchall()
     db.close()
     return render_template("follow_thread.html", r=r, msgs=msgs)
 
@@ -247,8 +256,16 @@ def follow_thread(token):
 def follow_message(token):
     body=(request.form.get("body") or "").strip()
     if not body: return redirect(url_for("follow_thread", token=token))
-    db=get_db(); rid=db.execute("SELECT id FROM reports WHERE anon_token=?", (token,)).fetchone()["id"]
-    db.execute("INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)", (rid,"rep","reporter",body,now_iso()))
+    db=get_db()
+    rid_row=db.execute("SELECT id FROM reports WHERE anon_token=?", (token,)).fetchone()
+    if not rid_row:
+        db.close()
+        abort(404)
+    rid=rid_row["id"]
+    db.execute(
+        "INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)",
+        (rid,"rep","reporter",body,now_iso()),
+    )
     db.commit(); db.close()
     flash("Message sent.","success")
     return redirect(url_for("follow_thread", token=token))
@@ -332,7 +349,9 @@ def admin_companies():
 def admin_company(company_id):
     db=get_db()
     c=db.execute("SELECT * FROM companies WHERE id=?", (company_id,)).fetchone()
-    if not c: abort(404)
+    if not c:
+        db.close()
+        abort(404)
     stats=db.execute("""
       SELECT
         SUM(CASE WHEN status='new' THEN 1 ELSE 0 END) as new,
@@ -377,7 +396,9 @@ def admin_reports():
 def admin_report_detail(rid):
     db=get_db()
     r=db.execute("SELECT * FROM reports WHERE id=?", (rid,)).fetchone()
-    if not r: abort(404)
+    if not r:
+        db.close()
+        abort(404)
     if request.method=="POST":
         act=request.form.get("action")
         if act=="status":
