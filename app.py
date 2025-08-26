@@ -1,4 +1,5 @@
-﻿import os, sqlite3, secrets, random
+import os, sqlite3, secrets, random
+from contextlib import closing
 from datetime import datetime, timezone
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_from_directory
@@ -152,7 +153,12 @@ def get_setting(key):
     return r["value"] if r else ""
 
 def set_setting(key,val):
-    db=get_db(); db.execute("REPLACE INTO settings(key,value,updated_at) VALUES(?,?,?)", (key,val,now_iso())); db.commit(); db.close()
+    with closing(get_db()) as db:
+        db.execute(
+            "REPLACE INTO settings(key,value,updated_at) VALUES(?,?,?)",
+            (key, val, now_iso()),
+        )
+        db.commit()
 
 # ----------------- routes: public
 @app.route("/")
