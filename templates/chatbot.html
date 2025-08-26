@@ -1,4 +1,5 @@
 <div id="chatbot-box" class="fixed bottom-20 right-4 w-80 max-w-full bg-white border rounded-lg shadow-lg hidden flex-col h-96">
+  <div id="chatbot-suggestions" class="p-2 border-b text-xs"></div>
   <div id="chatbot-log" class="p-2 flex-1 overflow-y-auto text-sm"></div>
   <form id="chatbot-form" class="flex border-t">
     <input id="chatbot-input" class="flex-1 p-2 text-sm" placeholder="Ask a question..." />
@@ -12,24 +13,42 @@
   const form=document.getElementById('chatbot-form');
   const input=document.getElementById('chatbot-input');
   const log=document.getElementById('chatbot-log');
+  const suggestionsBox=document.getElementById('chatbot-suggestions');
+
   toggle.addEventListener('click',()=>{box.classList.toggle('hidden'); input.focus();});
+
+  async function sendMessage(msg){
+    log.innerHTML+=`<div class="text-right mb-1">${msg}</div>`;
+    try{
+      const r=await fetch('/chatbot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+      const data=await r.json();
+      log.innerHTML+=`<div class="text-left mb-1 text-neon-blue">${data.reply}</div>`;
+    }catch(err){
+      log.innerHTML+=`<div class="text-left mb-1 text-red-600">Error: ${err}</div>`;
+    }
+    log.scrollTop=log.scrollHeight;
+  }
+
   form.addEventListener('submit', async (e)=>{
     e.preventDefault();
     const msg=input.value.trim();
     if(!msg) return;
-    log.innerHTML+=`<div class="text-right mb-1">${msg}</div>`;
     input.value='';
-    try {
-      const r=await fetch('/chatbot',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({message:msg})
-      });
-      const data=await r.json();
-      log.innerHTML+=`<div class="text-left mb-1 text-neon-blue">${data.reply}</div>`;
-    } catch(err){
-      log.innerHTML+=`<div class="text-left mb-1 text-red-600">Error: ${err}</div>`;
-    }
-    log.scrollTop=log.scrollHeight;
+    await sendMessage(msg);
+  });
+
+  const suggestions=[
+    'How do I file a report?',
+    'Can I remain anonymous?',
+    'What details should I include in my report?',
+    'How will my report be handled?'
+  ];
+  suggestions.forEach(q=>{
+    const b=document.createElement('button');
+    b.type='button';
+    b.className='m-1 px-2 py-1 border rounded';
+    b.textContent=q;
+    b.addEventListener('click',()=>sendMessage(q));
+    suggestionsBox.appendChild(b);
   });
 </script>
