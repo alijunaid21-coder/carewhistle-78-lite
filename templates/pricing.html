@@ -1,12 +1,28 @@
-﻿{% extends "layout.html" %}{% block body %}
-<section class="max-w-4xl mx-auto px-4 py-10">
-  <h2 class="text-3xl font-extrabold mb-4">Plans & Pricing</h2>
-  <div class="bg-white rounded-2xl p-8 border shadow-glass">
-    <div class="text-5xl font-extrabold mb-2">£150 <span class="text-base-muted text-2xl">/ year</span></div>
-    <ul class="list-disc ml-6 text-base-muted">
-      <li>Unlimited report recipients</li><li>Anonymous reporting</li><li>Separate chats per report</li>
-      <li>Manager & Admin portals</li><li>Media uploads</li><li>ISO-friendly, GDPR-aware</li>
-    </ul>
+{% extends "layout.html" %}
+{% block body %}
+<div class="container">
+  <h2>Plans & Pricing</h2>
+  <div class="pricing">
+    <div class="card plan">
+      <h2>All-in One</h2>
+      <div style="font-size:40px;font-weight:900">£150<span style="font-size:16px">/year</span></div>
+      <ul>
+        <li>Unlimited reports & recipients</li>
+        <li>Anonymous portal & two-way chat</li>
+        <li>Admin controls & CSV export</li>
+        <li>Manager dashboards</li>
+        <li>AI triage & insights</li>
+        <li>GDPR & ISO 27001 friendly</li>
+      </ul>
+      <p>
+        <form action="{{ url_for('checkout_stripe') }}" method="post" style="display:inline">
+          <button class="btn success">💳 Pay with Stripe</button>
+        </form>
+        <form action="{{ url_for('checkout_paypal') }}" method="post" style="display:inline">
+          <button class="btn secondary">🅿️ Pay with PayPal</button>
+        </form>
+      </p>
+    </div>
   </div>
-</section>
+</div>
 {% endblock %}
