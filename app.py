@@ -1,7 +1,18 @@
 ﻿import os, sqlite3, secrets, random
 from datetime import datetime, timezone
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_from_directory
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    session,
+    flash,
+    abort,
+    send_from_directory,
+    jsonify,
+)
 
 APP_NAME = "CareWhistle v78-lite"
 BASE_DIR = os.path.dirname(__file__)
@@ -18,6 +29,11 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     MAX_CONTENT_LENGTH=25*1024*1024
 )
+
+@app.context_processor
+def inject_current_year():
+    """Expose the current year for use in templates."""
+    return {"current_year": datetime.now().year}
 
 def now_iso(): return datetime.now(timezone.utc).isoformat()
 
@@ -533,6 +549,29 @@ def manager_notifications():
     if cnt: notes.append(f"{cnt} new admin message(s) in last 7 days.")
     db.close()
     return render_template("manager/notifications.html", notes=notes)
+
+# ----------------- AI chatbot
+@app.route("/chatbot", methods=["POST"])
+def chatbot():
+    data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()
+    if not message:
+        return jsonify({"error": "Please say something."}), 400
+    key = get_setting("openai_key") or os.environ.get("OPENAI_API_KEY")
+    if not key:
+        return jsonify({"error": "AI not configured."}), 503
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=key)
+        resp = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": message}],
+            max_tokens=200,
+        )
+        reply = resp.choices[0].message["content"].strip()
+        return jsonify({"reply": reply})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ----------------- errors
 @app.errorhandler(403)

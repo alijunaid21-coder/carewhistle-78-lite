@@ -65,7 +65,9 @@
   {% block body %}{% endblock %}
 
   <footer class="mt-16 py-8 text-center text-sm text-base-muted">
-    © {{ 2025 }} CareWhistle — Independent whistleblowing service. <span class="mx-2">•</span> help@carewhistle.app
+    &copy; {{ current_year }} CareWhistle — Independent whistleblowing service. <span class="mx-2">•</span> help@carewhistle.app
   </footer>
+
+  {% include 'chatbot.html' %}
 </body>
 </html>
