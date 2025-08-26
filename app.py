@@ -1,8 +1,11 @@
-import os, sqlite3, secrets, random
+import os, sqlite3, secrets, random, stripe, paypalrestsdk
 from contextlib import closing
 from datetime import datetime, timezone
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_from_directory
+from dotenv import load_dotenv
+
+load_dotenv()
 
 APP_NAME = "CareWhistle v78-lite"
 BASE_DIR = os.path.dirname(__file__)
@@ -24,6 +27,15 @@ app.config.update(
 def inject_year():
     return {"current_year": datetime.now().year}
 
+# --- Stripe ---
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_dummy")
+
+# --- PayPal ---
+paypalrestsdk.configure({
+    "mode": "sandbox",  # change to live when ready
+    "client_id": os.getenv("PAYPAL_CLIENT_ID", "dummy"),
+    "client_secret": os.getenv("PAYPAL_CLIENT_SECRET", "dummy")
+})
 def now_iso(): return datetime.now(timezone.utc).isoformat()
 
 def get_db():
@@ -170,6 +182,59 @@ def how(): return render_template("how.html", title="How it works")
 
 @app.route("/pricing")
 def pricing(): return render_template("pricing.html", title="Plans & Pricing")
+
+
+@app.route("/checkout/stripe", methods=["POST"])
+def checkout_stripe():
+    try:
+        session_stripe = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "gbp",
+                    "unit_amount": 15000,
+                    "product_data": {"name": "CareWhistle Annual Plan"},
+                },
+                "quantity": 1,
+            }],
+            mode="payment",
+            success_url=url_for("pricing", _external=True) + "?success=1",
+            cancel_url=url_for("pricing", _external=True) + "?canceled=1",
+        )
+        return redirect(session_stripe.url, code=303)
+    except Exception as e:
+        flash("Stripe error: " + str(e), "danger")
+        return redirect(url_for("pricing"))
+
+
+@app.route("/checkout/paypal", methods=["POST"])
+def checkout_paypal():
+    payment = paypalrestsdk.Payment({
+        "intent": "sale",
+        "payer": {"payment_method": "paypal"},
+        "redirect_urls": {
+            "return_url": url_for("pricing", _external=True) + "?paypal=success",
+            "cancel_url": url_for("pricing", _external=True) + "?paypal=canceled"
+        },
+        "transactions": [{
+            "item_list": {"items": [{
+                "name": "CareWhistle Annual Plan",
+                "sku": "cw-plan",
+                "price": "150.00",
+                "currency": "GBP",
+                "quantity": 1
+            }]},
+            "amount": {"total": "150.00", "currency": "GBP"},
+            "description": "Annual subscription"
+        }]
+    })
+
+    if payment.create():
+        for link in payment.links:
+            if link.method == "REDIRECT":
+                return redirect(link.href)
+    flash("PayPal error: " + str(payment.error), "danger")
+    return redirect(url_for("pricing"))
 
 def make_captcha():
     a,b = random.randint(1,9), random.randint(1,9)
@@ -565,6 +630,29 @@ def manager_notifications():
     db.close()
     return render_template("manager/notifications.html", notes=notes)
 
+# ----------------- AI chatbot
+@app.route("/chatbot", methods=["POST"])
+def chatbot():
+    data = request.get_json() or {}
+    message = (data.get("message") or "").strip()
+    if not message:
+        return {"reply": "Please say something."}
+    key = get_setting("openai_key") or os.environ.get("OPENAI_API_KEY")
+    if not key:
+        return {"reply": "AI not configured."}
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=key)
+        resp = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": message}],
+            max_tokens=200,
+        )
+        reply = resp.choices[0].message["content"].strip()
+    except Exception as e:
+        reply = f"Error: {e}"
+    return {"reply": reply}
+
 # ----------------- errors
 @app.errorhandler(403)
 def e403(e): return render_template("error.html", code=403, message="Forbidden"), 403
@@ -581,5 +669,6 @@ _initialize_app()
 
 if __name__ == "__main__":
     # Bind to 0.0.0.0 so Replit and other PaaS providers can access the port
+    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=debug)
