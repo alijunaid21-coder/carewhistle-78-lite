@@ -1,7 +1,26 @@
-﻿import os, sqlite3, secrets, random
+import os
+import random
+import secrets
+import sqlite3
 from datetime import datetime, timezone
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_from_directory
+
+import paypalrestsdk
+import stripe
+from dotenv import load_dotenv
+from flask import (
+    Flask,
+    abort,
+    flash,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    session,
+    url_for,
+)
+
+load_dotenv()
 
 APP_NAME = "CareWhistle v78-lite"
 BASE_DIR = os.path.dirname(__file__)
@@ -18,6 +37,16 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     MAX_CONTENT_LENGTH=25*1024*1024
 )
+
+# --- Stripe ---
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_dummy")
+
+# --- PayPal ---
+paypalrestsdk.configure({
+    "mode": "sandbox",  # change to live when ready
+    "client_id": os.getenv("PAYPAL_CLIENT_ID", "dummy"),
+    "client_secret": os.getenv("PAYPAL_CLIENT_SECRET", "dummy")
+})
 
 def now_iso(): return datetime.now(timezone.utc).isoformat()
 
@@ -160,6 +189,59 @@ def how(): return render_template("how.html", title="How it works")
 
 @app.route("/pricing")
 def pricing(): return render_template("pricing.html", title="Plans & Pricing")
+
+
+@app.route("/checkout/stripe", methods=["POST"])
+def checkout_stripe():
+    try:
+        session_stripe = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "gbp",
+                    "unit_amount": 15000,
+                    "product_data": {"name": "CareWhistle Annual Plan"},
+                },
+                "quantity": 1,
+            }],
+            mode="payment",
+            success_url=url_for("pricing", _external=True) + "?success=1",
+            cancel_url=url_for("pricing", _external=True) + "?canceled=1",
+        )
+        return redirect(session_stripe.url, code=303)
+    except Exception as e:
+        flash("Stripe error: " + str(e), "danger")
+        return redirect(url_for("pricing"))
+
+
+@app.route("/checkout/paypal", methods=["POST"])
+def checkout_paypal():
+    payment = paypalrestsdk.Payment({
+        "intent": "sale",
+        "payer": {"payment_method": "paypal"},
+        "redirect_urls": {
+            "return_url": url_for("pricing", _external=True) + "?paypal=success",
+            "cancel_url": url_for("pricing", _external=True) + "?paypal=canceled"
+        },
+        "transactions": [{
+            "item_list": {"items": [{
+                "name": "CareWhistle Annual Plan",
+                "sku": "cw-plan",
+                "price": "150.00",
+                "currency": "GBP",
+                "quantity": 1
+            }]},
+            "amount": {"total": "150.00", "currency": "GBP"},
+            "description": "Annual subscription"
+        }]
+    })
+
+    if payment.create():
+        for link in payment.links:
+            if link.method == "REDIRECT":
+                return redirect(link.href)
+    flash("PayPal error: " + str(payment.error), "danger")
+    return redirect(url_for("pricing"))
 
 def make_captcha():
     a,b = random.randint(1,9), random.randint(1,9)
