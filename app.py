@@ -1,4 +1,4 @@
-import os, sqlite3, secrets, random, re
+import os, sqlite3, secrets, random
 
 # Optional PostgreSQL support. The application continues to run with SQLite
 # if the `DATABASE_URL` environment variable is not provided or the psycopg2
@@ -918,76 +918,11 @@ def manager_notifications():
 # ----------------- AI chatbot
 @app.route("/chatbot", methods=["POST"])
 def chatbot():
-    data = request.get_json(silent=True) or {}
-    if not isinstance(data, dict):
-        data = {}
-    message = (data.get("message") or "").strip()
-    if not message:
-        return {"reply": "Please say something."}
-
-    history = session.setdefault(
-        "chat_history",
-        [
-            {
-                "role": "system",
-                "content": (
-                    "You are an AI assistant for a whistleblower reporting service. "
-                    "Provide confidential, supportive and general guidance to users."
-                ),
-            }
-        ],
-    )
-    history.append({"role": "user", "content": message})
-
-    faq_answers = {
-        "how do i file a report": (
-            "Go to the Make a Report page, enter your employer's Company Code, "
-            "choose the category, decide if you want to report anonymously or "
-            "confidentially, describe your concern and submit the form."
-        ),
-        "can i remain anonymous": (
-            "Yes. When filing a report you can select 'Anonymous' or "
-            "'Confidential' before providing your contact details."
-        ),
-        "what details should i include": (
-            "Include dates, locations and people involved, mention what you've "
-            "done so far and add any memorable word or preferred contact time."
-        ),
-        "how will my report be handled": (
-            "Our trained advisors compile a detailed concern report, send it to "
-            "your organisation's coordinators and give you a unique password to "
-            "communicate with us. You'll receive updates once the investigation "
-            "is complete."
-        ),
+    """Respond with a constant message directing users to email support."""
+    request.get_json(silent=True)  # Accept but ignore any client message
+    return {
+        "reply": "Please contact us on info@carewhistle.com for further assistance."
     }
-
-    msg_clean = re.sub(r"[^a-z0-9\s]", "", message.lower())
-    reply = None
-    for k, v in faq_answers.items():
-        if k in msg_clean:
-            reply = v
-            break
-
-    key = get_setting("openai_key") or os.environ.get("OPENAI_API_KEY")
-    if reply is None:
-        if not key:
-            reply = "AI not configured."
-        else:
-            try:
-                from openai import OpenAI
-                client = OpenAI(api_key=key)
-                resp = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=history,
-                    max_tokens=200,
-                )
-                reply = resp.choices[0].message["content"].strip()
-            except Exception as e:
-                reply = f"Error: {e}"
-
-    history.append({"role": "assistant", "content": reply})
-    session.modified = True
-    return {"reply": reply}
 
 # ----------------- errors
 @app.errorhandler(403)
