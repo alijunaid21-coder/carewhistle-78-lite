@@ -11,7 +11,7 @@
     <option value="">Any category</option>
     {% for c in categories %}<option {% if c==category %}selected{% endif %}>{{ c }}</option>{% endfor %}
   </select>
-  <button class="px-4 py-2 rounded-lg bg-neutral-800 text-white">Filter</button>
+  <button class="px-4 py-2 rounded-lg bg-brand-dark text-white">Filter</button>
 </form>
 <div class="bg-white rounded-xl p-4 border shadow-glass">
   <table class="w-full text-sm">
@@ -23,7 +23,7 @@
         <td>{{ r.category }}</td>
         <td>{{ r.status }}</td>
         <td>{{ r.created_at[:19] }}</td>
-        <td><a class="text-neon-blue" href="{{ url_for('admin_report_detail', rid=r.id) }}">Open</a></td>
+        <td><a class="text-brand-light" href="{{ url_for('admin_report_detail', rid=r.id) }}">Open</a></td>
       </tr>
     {% endfor %}
   </table>

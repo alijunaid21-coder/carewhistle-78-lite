@@ -24,14 +24,14 @@
         <td>{{ c.newc or 0 }}</td>
         <td>{{ c.inpc or 0 }}</td>
         <td>{{ c.clos or 0 }}</td>
-        <td><a class="text-neon-blue" href="{{ url_for('admin_company', company_id=c.id) }}">View</a></td>
+        <td><a class="text-brand-light" href="{{ url_for('admin_company', company_id=c.id) }}">View</a></td>
       </tr>
     {% endfor %}
   </table>
 </div>
 
 <script>
-const colors = ["#3b82f6","#22c55e","#ec4899","#8b5cf6","#f59e0b","#06b6d4","#64748b","#ef4444"];
+const colors = ["#1e3a8a","#3b82f6","#64748b","#94a3b8","#cbd5e1","#e2e8f0","#1e293b","#0f172a"];
 new Chart(document.getElementById('byMonth'), {
   type:'line',
   data:{labels:{{ monthly|map(attribute='ym')|list|tojson }},

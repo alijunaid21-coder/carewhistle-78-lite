@@ -9,10 +9,10 @@
     </ul>
     <div class="mt-6 flex gap-2">
       <form action="{{ url_for('checkout_stripe') }}" method="post">
-        <button class="px-4 py-2 rounded bg-neon-blue text-white">Pay with Stripe</button>
+        <button class="px-4 py-2 rounded bg-brand-light text-white">Pay with Stripe</button>
       </form>
       <form action="{{ url_for('checkout_paypal') }}" method="post">
-        <button class="px-4 py-2 rounded bg-neutral-800 text-white">Pay with PayPal</button>
+        <button class="px-4 py-2 rounded bg-brand-dark text-white">Pay with PayPal</button>
       </form>
     </div>
   </div>

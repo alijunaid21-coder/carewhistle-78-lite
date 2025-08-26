@@ -10,8 +10,8 @@
       theme:{
         extend:{
           colors:{
-            base: { bg:"#f7f8fb", card:"#ffffff", ink:"#111827", muted:"#6b7280" },
-            neon: { blue:"#3b82f6", green:"#22c55e", pink:"#ec4899", purple:"#8b5cf6", amber:"#f59e0b", cyan:"#06b6d4" }
+            base: { bg:"#f8fafc", card:"#ffffff", ink:"#1e293b", muted:"#64748b" },
+            brand: { dark:"#1e3a8a", light:"#3b82f6", gray:"#64748b" }
           },
           boxShadow:{
             glass:"0 10px 30px rgba(31,41,55,.08), inset 0 1px 0 rgba(255,255,255,.5)"
@@ -27,30 +27,30 @@
   <header class="sticky top-0 z-40 backdrop-blur bg-white/80 border-b">
     <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
       <a href="{{ url_for('home') }}" class="flex items-center gap-2 font-extrabold text-lg">
-        <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-neon-blue to-neon-purple text-white shadow-glass ring-2 ring-white">
+        <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-brand-dark to-brand-light text-white shadow-glass ring-2 ring-white">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor">
             <path d="M8.5 9A6.5 6.5 0 0 0 2 15.5 6.5 6.5 0 0 0 8.5 22 6.5 6.5 0 0 0 15 15.5V13.91L22 12V9H11V11H9V9H8.5M11 2V7H9V2H11M6.35 7.28c-.67.16-1.31.4-1.92.72L2.14 4.88 3.76 3.7 6.35 7.28M17.86 4.88 16.32 7h-2.47L16.24 3.7l1.62 1.18Z"/>
           </svg>
         </span>
-        <span class="bg-gradient-to-r from-neon-blue to-neon-purple bg-clip-text text-transparent">CareWhistle</span>
+        <span class="bg-gradient-to-r from-brand-dark to-brand-light bg-clip-text text-transparent">CareWhistle</span>
       </a>
       <nav class="ml-6 flex items-center gap-4 text-sm">
-        <a class="hover:text-neon-blue" href="{{ url_for('home') }}">Home</a>
-        <a class="hover:text-neon-blue" href="{{ url_for('how') }}">How it works</a>
-        <a class="hover:text-neon-blue" href="{{ url_for('report') }}">Make a Report</a>
-        <a class="hover:text-neon-blue" href="{{ url_for('pricing') }}">Plans & Pricing</a>
+        <a class="hover:text-brand-light" href="{{ url_for('home') }}">Home</a>
+        <a class="hover:text-brand-light" href="{{ url_for('how') }}">How it works</a>
+        <a class="hover:text-brand-light" href="{{ url_for('report') }}">Make a Report</a>
+        <a class="hover:text-brand-light" href="{{ url_for('pricing') }}">Plans & Pricing</a>
       </nav>
       <div class="ml-auto flex items-center gap-2">
         <a class="px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200" href="{{ url_for('follow') }}">Case Portal</a>
         {% if session.get('user_id') %}
           {% if session.get('role')=='admin' %}
-            <a class="px-3 py-1.5 rounded-lg bg-neon-blue text-white" href="{{ url_for('admin_dashboard') }}">Admin</a>
+            <a class="px-3 py-1.5 rounded-lg bg-brand-light text-white" href="{{ url_for('admin_dashboard') }}">Admin</a>
           {% elif session.get('role')=='manager' %}
-            <a class="px-3 py-1.5 rounded-lg bg-neon-purple text-white" href="{{ url_for('manager_overview') }}">Manager</a>
+            <a class="px-3 py-1.5 rounded-lg bg-brand-gray text-white" href="{{ url_for('manager_overview') }}">Manager</a>
           {% endif %}
-          <a class="px-3 py-1.5 rounded-lg bg-neutral-800 text-white" href="{{ url_for('logout') }}">Logout</a>
+          <a class="px-3 py-1.5 rounded-lg bg-brand-dark text-white" href="{{ url_for('logout') }}">Logout</a>
         {% else %}
-          <a class="px-3 py-1.5 rounded-lg bg-neutral-800 text-white" href="{{ url_for('login') }}">Login</a>
+          <a class="px-3 py-1.5 rounded-lg bg-brand-dark text-white" href="{{ url_for('login') }}">Login</a>
         {% endif %}
       </div>
     </div>

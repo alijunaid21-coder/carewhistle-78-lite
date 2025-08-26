@@ -6,7 +6,7 @@
     {% for r in reports %}
       <tr class="border-b">
         <td class="py-2">{{ r.id }}</td><td><code>{{ r.company_code }}</code></td><td>{{ r.updated }}</td>
-        <td><a class="text-neon-blue" href="{{ url_for('manager_messages_thread', rid=r.id) }}">Open</a></td>
+        <td><a class="text-brand-light" href="{{ url_for('manager_messages_thread', rid=r.id) }}">Open</a></td>
       </tr>
     {% endfor %}
   </table>
