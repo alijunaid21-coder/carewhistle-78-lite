@@ -19,6 +19,10 @@ app.config.update(
     MAX_CONTENT_LENGTH=25*1024*1024
 )
 
+@app.context_processor
+def inject_year():
+    return {"current_year": datetime.now().year}
+
 def now_iso(): return datetime.now(timezone.utc).isoformat()
 
 def get_db():
