@@ -17,6 +17,11 @@ def test_chatbot_empty_message():
     resp = client.post('/chatbot', json={})
     assert resp.get_json()['reply'] == 'Please say something.'
 
+
+def test_chatbot_handles_invalid_json():
+    resp = client.post('/chatbot', data='not json', content_type='application/json')
+    assert resp.get_json()['reply'] == 'Please say something.'
+
 def test_chatbot_history_and_no_key():
     resp = client.post('/chatbot', json={'message': 'Hello'})
     data = resp.get_json()

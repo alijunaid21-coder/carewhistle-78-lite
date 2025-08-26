@@ -918,7 +918,9 @@ def manager_notifications():
 # ----------------- AI chatbot
 @app.route("/chatbot", methods=["POST"])
 def chatbot():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        data = {}
     message = (data.get("message") or "").strip()
     if not message:
         return {"reply": "Please say something."}
