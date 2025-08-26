@@ -21,13 +21,17 @@
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Ctext y='50'%3E%F0%9F%9A%A8%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23000'%3E%3Cpath d='M8.5%2C9A6.5%2C6.5 0 0%2C0 2%2C15.5A6.5%2C6.5 0 0%2C0 8.5%2C22A6.5%2C6.5 0 0%2C0 15%2C15.5V13.91L22%2C12V9H11V11H9V9H8.5M11%2C2V7H9V2H11M6.35%2C7.28C5.68%2C7.44 5.04%2C7.68 4.43%2C8L2.14%2C4.88L3.76%2C3.7L6.35%2C7.28M17.86%2C4.88L16.32%2C7H13.85L16.24%2C3.7L17.86%2C4.88Z'/%3E%3C/svg%3E">
 </head>
 <body class="bg-base-bg text-base-ink">
   <header class="sticky top-0 z-40 backdrop-blur bg-white/80 border-b">
     <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
       <a href="{{ url_for('home') }}" class="flex items-center gap-2 font-extrabold text-lg">
-        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-neon-blue text-white shadow-glass">🔔</span>
+        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-neon-blue text-white shadow-glass">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8.5,9A6.5,6.5 0 0,0 2,15.5A6.5,6.5 0 0,0 8.5,22A6.5,6.5 0 0,0 15,15.5V13.91L22,12V9H11V11H9V9H8.5M11,2V7H9V2H11M6.35,7.28C5.68,7.44 5.04,7.68 4.43,8L2.14,4.88L3.76,3.7L6.35,7.28M17.86,4.88L16.32,7H13.85L16.24,3.7L17.86,4.88Z" />
+          </svg>
+        </span>
         <span>CareWhistle</span>
       </a>
       <nav class="ml-6 flex items-center gap-4 text-sm">
