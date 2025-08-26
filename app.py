@@ -543,4 +543,6 @@ def e404(e): return render_template("error.html", code=404, message="Not Found")
 if __name__=="__main__":
     os.makedirs(MEDIA_DIR, exist_ok=True)
     init_db()
-    app.run(debug=True)
+    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=debug)
