@@ -443,6 +443,58 @@ def admin_dashboard():
     db.close()
     return render_template("admin/dashboard.html", stats=stats, monthly=monthly, bycat=bycat, bystatus=bystatus, companies=companies, avg_hours=avg_hours)
 
+
+@app.route("/admin/stats")
+@login_required
+@role_required("admin")
+def admin_stats_api():
+    db = get_db()
+    stats = db.execute(
+        """
+      SELECT
+        SUM(CASE WHEN status='new' THEN 1 ELSE 0 END) as new,
+        SUM(CASE WHEN status IN ('in_review','awaiting_info') THEN 1 ELSE 0 END) as inproc,
+        SUM(CASE WHEN status IN ('resolved','closed') THEN 1 ELSE 0 END) as closed
+      FROM reports
+    """
+    ).fetchone()
+    monthly = db.execute(
+        "SELECT substr(created_at,1,7) ym, COUNT(*) cnt FROM reports GROUP BY ym ORDER BY ym"
+    ).fetchall()
+    bycat = db.execute(
+        "SELECT category, COUNT(*) cnt FROM reports GROUP BY category ORDER BY cnt DESC"
+    ).fetchall()
+    bystatus = db.execute(
+        "SELECT status, COUNT(*) cnt FROM reports GROUP BY status"
+    ).fetchall()
+    rs = db.execute("SELECT id,created_at FROM reports").fetchall()
+    import datetime as dt
+    total = 0
+    n = 0
+    for r in rs:
+        m = db.execute(
+            "SELECT created_at FROM messages WHERE report_id=? AND sender IN ('admin','manager') ORDER BY id LIMIT 1",
+            (r["id"],),
+        ).fetchone()
+        if m:
+            t0 = dt.datetime.fromisoformat(r["created_at"])
+            t1 = dt.datetime.fromisoformat(m["created_at"])
+            total += (t1 - t0).total_seconds() / 3600
+            n += 1
+    avg_hours = round(total / n, 1) if n else 0
+    db.close()
+    return {
+        "stats": {
+            "new": stats["new"] or 0,
+            "inproc": stats["inproc"] or 0,
+            "closed": stats["closed"] or 0,
+            "avg_hours": avg_hours,
+        },
+        "monthly": [dict(r) for r in monthly],
+        "bycat": [dict(r) for r in bycat],
+        "bystatus": [dict(r) for r in bystatus],
+    }
+
 @app.route("/admin/companies", methods=["GET","POST"])
 @login_required
 @role_required("admin")
@@ -661,6 +713,44 @@ def manager_overview():
     bycat=db.execute("SELECT category, COUNT(*) cnt FROM reports WHERE company_id=? GROUP BY category ORDER BY cnt DESC",(cid,)).fetchall()
     db.close()
     return render_template("manager/overview.html", stats=stats, monthly=monthly, bycat=bycat)
+
+
+@app.route("/manager/stats")
+@login_required
+@role_required("manager")
+def manager_stats_api():
+    cid = session.get("company_id")
+    db = get_db()
+    stats = db.execute(
+        """
+      SELECT
+        SUM(CASE WHEN status='new' THEN 1 ELSE 0 END) AS new,
+        SUM(CASE WHEN status IN ('in_review','awaiting_info') THEN 1 ELSE 0 END) AS inproc,
+        SUM(CASE WHEN status IN ('resolved','closed') THEN 1 ELSE 0 END) AS closed,
+        COUNT(*) AS assigned
+      FROM reports
+      WHERE company_id=?
+    """,
+        (cid,),
+    ).fetchone()
+    monthly = db.execute(
+        "SELECT substr(created_at,1,7) ym, COUNT(*) cnt FROM reports WHERE company_id=? GROUP BY ym ORDER BY ym",
+        (cid,),
+    ).fetchall()
+    bycat = db.execute(
+        "SELECT category, COUNT(*) cnt FROM reports WHERE company_id=? GROUP BY category ORDER BY cnt DESC",
+        (cid,),
+    ).fetchall()
+    db.close()
+    return {
+        "stats": {
+            "assigned": stats["assigned"] or 0,
+            "new": stats["new"] or 0,
+            "closed": stats["closed"] or 0,
+        },
+        "monthly": [dict(r) for r in monthly],
+        "bycat": [dict(r) for r in bycat],
+    }
 
 @app.route("/manager/messages")
 @login_required
