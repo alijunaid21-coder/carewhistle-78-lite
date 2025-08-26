@@ -77,6 +77,12 @@ def init_db():
       value TEXT,
       updated_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS issues(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      contact TEXT,
+      message TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
     """)
     # Seed company, admin, manager, demo reports if empty
     if c.execute("SELECT COUNT(*) FROM companies").fetchone()[0]==0:
@@ -210,6 +216,20 @@ def report():
         return render_template("report_success.html", token=token, pin=pin)
     a,b = make_captcha()
     return render_template("report.html", captcha_a=a, captcha_b=b, categories=CATEGORIES)
+
+@app.route("/problem", methods=["POST"])
+def report_problem():
+    contact = (request.form.get("contact") or "").strip()
+    message = (request.form.get("message") or "").strip()
+    if not message:
+        return "Missing message", 400
+    db = get_db()
+    db.execute(
+        "INSERT INTO issues(contact, message, created_at) VALUES(?,?,?)",
+        (contact, message, now_iso()),
+    )
+    db.commit(); db.close()
+    return "OK"
 
 @app.route("/follow", methods=["GET","POST"])
 def follow():
