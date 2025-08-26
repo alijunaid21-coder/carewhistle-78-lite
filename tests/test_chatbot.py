@@ -13,6 +13,12 @@ importlib.reload(app)
 
 client = app.app.test_client()
 
+
+def test_chatbot_faq_response():
+    resp = client.post('/chatbot', json={'message': 'How do I file a report?'})
+    assert 'Go to the Make a Report page' in resp.get_json()['reply']
+
+
 def test_chatbot_empty_message():
     resp = client.post('/chatbot', json={})
     assert resp.get_json()['reply'] == 'Please say something.'
@@ -22,16 +28,10 @@ def test_chatbot_handles_invalid_json():
     resp = client.post('/chatbot', data='not json', content_type='application/json')
     assert resp.get_json()['reply'] == 'Please say something.'
 
-def test_chatbot_history_and_no_key():
-    resp = client.post('/chatbot', json={'message': 'Hello'})
-    data = resp.get_json()
-    assert data['reply'] == 'AI not configured.'
-    with client.session_transaction() as sess:
-        history = sess['chat_history']
-        assert history[0]['role'] == 'system'
 
-
-def test_chatbot_faq_response():
-    resp = client.post('/chatbot', json={'message': 'How will my report be handled?'})
-    data = resp.get_json()
-    assert 'trained advisors compile a detailed concern report' in data['reply']
+def test_chatbot_unknown_question():
+    question = "What's the weather?"
+    resp = client.post('/chatbot', json={'message': question})
+    reply = resp.get_json()['reply']
+    assert 'whistleblowing' in reply.lower()
+    assert question in reply
