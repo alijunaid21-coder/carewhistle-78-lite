@@ -678,21 +678,51 @@ def chatbot():
     )
     history.append({"role": "user", "content": message})
 
+    faq_answers = {
+        "how do i file a report": (
+            "Go to the Make a Report page, enter your employer's Company Code, "
+            "choose the category, decide if you want to report anonymously or "
+            "confidentially, describe your concern and submit the form."
+        ),
+        "can i remain anonymous": (
+            "Yes. When filing a report you can select 'Anonymous' or "
+            "'Confidential' before providing your contact details."
+        ),
+        "what details should i include": (
+            "Include dates, locations and people involved, mention what you've "
+            "done so far and add any memorable word or preferred contact time."
+        ),
+        "how will my report be handled": (
+            "Our trained advisors compile a detailed concern report, send it to "
+            "your organisation's coordinators and give you a unique password to "
+            "communicate with us. You'll receive updates once the investigation "
+            "is complete."
+        ),
+    }
+
+    msg_lower = message.lower()
+    reply = None
+    for k, v in faq_answers.items():
+        if k in msg_lower:
+            reply = v
+            break
+
     key = get_setting("openai_key") or os.environ.get("OPENAI_API_KEY")
-    if not key:
-        reply = "AI not configured."
-    else:
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=key)
-            resp = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=history,
-                max_tokens=200,
-            )
-            reply = resp.choices[0].message["content"].strip()
-        except Exception as e:
-            reply = f"Error: {e}"
+    if reply is None:
+        if not key:
+            reply = "AI not configured."
+        else:
+            try:
+                from openai import OpenAI
+                client = OpenAI(api_key=key)
+                resp = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=history,
+                    max_tokens=200,
+                )
+                reply = resp.choices[0].message["content"].strip()
+            except Exception as e:
+                reply = f"Error: {e}"
 
     history.append({"role": "assistant", "content": reply})
     session.modified = True
