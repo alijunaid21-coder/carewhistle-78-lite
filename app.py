@@ -146,8 +146,14 @@ def init_db():
                       (rid,"rep","reporter","Hello, I want to remain anonymous.", now_iso()))
     # settings placeholders
     defaults = {
-      "smtp_url":"", "stripe_key":"", "paypal_key":"", "pg_url":"", "mongo_url":"",
-      "openai_key":"", "youtube_url":""
+      "smtp_url":"",
+      "stripe_key":"",
+      "paypal_client_id":"",
+      "paypal_client_secret":"",
+      "pg_url":"",
+      "mongo_url":"",
+      "openai_key":"",
+      "youtube_url":"",
     }
     for k,v in defaults.items():
         c.execute("INSERT OR IGNORE INTO settings(key,value,updated_at) VALUES(?,?,?)", (k,v,now_iso()))
@@ -205,6 +211,15 @@ def pricing(): return render_template("pricing.html", title="Plans & Pricing")
 
 @app.route("/checkout/stripe", methods=["POST"])
 def checkout_stripe():
+    if not stripe:
+        flash("Stripe integration not configured.", "warning")
+        return redirect(url_for("pricing"))
+
+    stripe.api_key = get_setting("stripe_key") or ""
+    if not stripe.api_key:
+        flash("Stripe key not configured.", "warning")
+        return redirect(url_for("pricing"))
+
     try:
         session_stripe = stripe.checkout.Session.create(
             payment_method_types=["card"],
@@ -231,6 +246,18 @@ def checkout_paypal():
     if not paypalrestsdk:
         flash("PayPal integration not configured.", "warning")
         return redirect(url_for("pricing"))
+
+    client_id = get_setting("paypal_client_id") or ""
+    client_secret = get_setting("paypal_client_secret") or ""
+    if not client_id or not client_secret:
+        flash("PayPal credentials not configured.", "warning")
+        return redirect(url_for("pricing"))
+
+    paypalrestsdk.configure({
+        "mode": "sandbox",  # change to live when ready
+        "client_id": client_id,
+        "client_secret": client_secret,
+    })
 
     payment = paypalrestsdk.Payment({
         "intent": "sale",
@@ -576,10 +603,28 @@ def media_file(filename):
 @role_required("admin")
 def admin_settings():
     if request.method=="POST":
-        for k in ["smtp_url","stripe_key","paypal_key","pg_url","mongo_url","openai_key","youtube_url"]:
+        for k in [
+            "smtp_url",
+            "stripe_key",
+            "paypal_client_id",
+            "paypal_client_secret",
+            "pg_url",
+            "mongo_url",
+            "openai_key",
+            "youtube_url",
+        ]:
             set_setting(k, request.form.get(k) or "")
         flash("Saved.","success"); return redirect(url_for("admin_settings"))
-    settings={k:get_setting(k) for k in ["smtp_url","stripe_key","paypal_key","pg_url","mongo_url","openai_key","youtube_url"]}
+    settings={k:get_setting(k) for k in [
+        "smtp_url",
+        "stripe_key",
+        "paypal_client_id",
+        "paypal_client_secret",
+        "pg_url",
+        "mongo_url",
+        "openai_key",
+        "youtube_url",
+    ]}
     return render_template("admin/settings.html", settings=settings)
 
 @app.route("/admin/notifications")
