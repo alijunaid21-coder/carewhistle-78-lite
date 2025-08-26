@@ -19,9 +19,17 @@
     if(!msg) return;
     log.innerHTML+=`<div class="text-right mb-1">${msg}</div>`;
     input.value='';
-    const r=await fetch('/chatbot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
-    const data=await r.json();
-    log.innerHTML+=`<div class="text-left mb-1 text-neon-blue">${data.reply}</div>`;
+    try {
+      const r=await fetch('/chatbot',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({message:msg})
+      });
+      const data=await r.json();
+      log.innerHTML+=`<div class="text-left mb-1 text-neon-blue">${data.reply}</div>`;
+    } catch(err){
+      log.innerHTML+=`<div class="text-left mb-1 text-red-600">Error: ${err}</div>`;
+    }
     log.scrollTop=log.scrollHeight;
   });
 </script>
