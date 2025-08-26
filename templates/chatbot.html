@@ -1,54 +1,71 @@
-<div id="chatbot-box" class="fixed bottom-20 right-4 w-80 max-w-full bg-white border rounded-lg shadow-lg hidden flex-col h-96">
-  <div id="chatbot-suggestions" class="p-2 border-b text-xs"></div>
-  <div id="chatbot-log" class="p-2 flex-1 overflow-y-auto text-sm"></div>
+<div id="chatbot-box" class="fixed bottom-20 right-4 w-80 max-w-full bg-white border rounded-lg shadow-lg hidden flex flex-col h-96">
+  <div class="flex items-center justify-between p-2 border-b bg-neutral-50 rounded-t-lg">
+    <span class="font-semibold text-sm">Ask CareWhistle</span>
+    <button id="chatbot-close" class="text-xl leading-none">&times;</button>
+  </div>
+  <div id="chatbot-log" class="p-3 flex-1 overflow-y-auto text-sm space-y-2"></div>
+  <div id="chatbot-suggestions" class="p-2 border-t bg-neutral-50 text-xs"></div>
   <form id="chatbot-form" class="flex border-t">
-    <input id="chatbot-input" class="flex-1 p-2 text-sm" placeholder="Ask a question..." />
+    <input id="chatbot-input" class="flex-1 p-2 text-sm focus:outline-none" placeholder="Type your message..." />
     <button class="px-3 text-white bg-neon-blue">Send</button>
   </form>
 </div>
 <button id="chatbot-toggle" class="fixed bottom-4 right-4 w-12 h-12 rounded-full bg-neon-blue text-white shadow-lg">💬</button>
 <script>
-  const toggle=document.getElementById('chatbot-toggle');
-  const box=document.getElementById('chatbot-box');
-  const form=document.getElementById('chatbot-form');
-  const input=document.getElementById('chatbot-input');
-  const log=document.getElementById('chatbot-log');
-  const suggestionsBox=document.getElementById('chatbot-suggestions');
+const toggle = document.getElementById('chatbot-toggle');
+const box = document.getElementById('chatbot-box');
+const closeBtn = document.getElementById('chatbot-close');
+const form = document.getElementById('chatbot-form');
+const input = document.getElementById('chatbot-input');
+const log = document.getElementById('chatbot-log');
+const suggestionsBox = document.getElementById('chatbot-suggestions');
 
-  toggle.addEventListener('click',()=>{box.classList.toggle('hidden'); input.focus();});
+function appendMessage(msg, sender){
+  const wrap = document.createElement('div');
+  wrap.className = 'flex ' + (sender === 'user' ? 'justify-end' : 'justify-start');
+  const bubble = document.createElement('div');
+  bubble.className = 'px-3 py-1 rounded-lg max-w-[75%] ' + (sender === 'user' ? 'bg-neon-blue text-white' : 'bg-neutral-100');
+  bubble.textContent = msg;
+  wrap.appendChild(bubble);
+  log.appendChild(wrap);
+  log.scrollTop = log.scrollHeight;
+}
 
-  async function sendMessage(msg){
-    log.innerHTML+=`<div class="text-right mb-1">${msg}</div>`;
-    try{
-      const r=await fetch('/chatbot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
-      const data=await r.json();
-      log.innerHTML+=`<div class="text-left mb-1 text-neon-blue">${data.reply}</div>`;
-    }catch(err){
-      log.innerHTML+=`<div class="text-left mb-1 text-red-600">Error: ${err}</div>`;
-    }
-    log.scrollTop=log.scrollHeight;
+toggle.addEventListener('click', () => { box.classList.toggle('hidden'); input.focus(); });
+closeBtn.addEventListener('click', () => box.classList.add('hidden'));
+
+async function sendMessage(msg){
+  appendMessage(msg, 'user');
+  try{
+    const r = await fetch('/chatbot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+    const data = await r.json();
+    appendMessage(data.reply,'bot');
+  }catch(err){
+    appendMessage('Error: '+err,'bot');
   }
+}
 
-  form.addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    const msg=input.value.trim();
-    if(!msg) return;
-    input.value='';
-    await sendMessage(msg);
-  });
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const msg = input.value.trim();
+  if(!msg) return;
+  input.value = '';
+  await sendMessage(msg);
+});
 
-  const suggestions=[
-    'How do I file a report?',
-    'Can I remain anonymous?',
-    'What details should I include in my report?',
-    'How will my report be handled?'
-  ];
-  suggestions.forEach(q=>{
-    const b=document.createElement('button');
-    b.type='button';
-    b.className='m-1 px-2 py-1 border rounded';
-    b.textContent=q;
-    b.addEventListener('click',()=>sendMessage(q));
-    suggestionsBox.appendChild(b);
-  });
+const suggestions = [
+  'How do I file a report?',
+  'Can I remain anonymous?',
+  'What details should I include in my report?',
+  'How will my report be handled?'
+];
+suggestions.forEach(q => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'm-1 px-2 py-1 rounded-full border text-left hover:bg-neutral-100';
+  b.textContent = q;
+  b.addEventListener('click', () => sendMessage(q));
+  suggestionsBox.appendChild(b);
+});
 </script>
+
