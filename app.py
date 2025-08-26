@@ -1,5 +1,15 @@
 import os, sqlite3, secrets, random
 
+# Optional PostgreSQL support. The application continues to run with SQLite
+# if the `DATABASE_URL` environment variable is not provided or the psycopg2
+# package is unavailable. Import lazily so tests that don't require PostgreSQL
+# don't fail when the dependency is missing.
+try:  # pragma: no cover - optional dependency
+    import psycopg2  # type: ignore
+    import psycopg2.extras  # type: ignore
+except Exception:  # ImportError or any other issue initialising the package
+    psycopg2 = None  # type: ignore
+
 # Optional third‑party services. These modules are not required for the core
 # application features (such as authentication) so we load them lazily. This
 # prevents the entire application from failing to start when the packages are
@@ -31,6 +41,11 @@ BASE_DIR = os.path.dirname(__file__)
 DB_PATH  = os.path.join(BASE_DIR, "carewhistle.db")
 MEDIA_DIR= os.path.join(BASE_DIR, "media")
 
+# If DATABASE_URL is provided we attempt to use PostgreSQL. Otherwise the
+# application falls back to the bundled SQLite database file.
+DATABASE_URL = os.environ.get("DATABASE_URL")
+USE_POSTGRES = bool(DATABASE_URL and psycopg2)
+
 STATUSES   = ["new","in_review","awaiting_info","resolved","closed"]
 CATEGORIES = ["Bribery","Fraud","Harassment","GDPR","Safety","Money laundering","Other"]
 
@@ -59,89 +74,177 @@ if paypalrestsdk:
     })
 def now_iso(): return datetime.now(timezone.utc).isoformat()
 
+class PgConn:
+    """Lightweight wrapper mimicking the subset of sqlite3.Connection used.
+
+    It converts SQLite-style ``?`` placeholders into ``%s`` for psycopg2 and
+    returns a cursor so existing call sites (``db.execute(...).fetchone()``)
+    continue to work.
+    """
+
+    def __init__(self, conn):
+        self.conn = conn
+
+    # Provide cursor() for compatibility with sqlite3.Connection
+    def cursor(self):
+        return self
+
+    def execute(self, sql, params=()):
+        cur = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(sql.replace("?", "%s"), params)
+        return cur
+
+    def executescript(self, script):
+        cur = self.conn.cursor()
+        for stmt in script.split(";"):
+            stmt = stmt.strip()
+            if stmt:
+                cur.execute(stmt)
+        self.conn.commit()
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
+
 def get_db():
+    if USE_POSTGRES:
+        conn = psycopg2.connect(DATABASE_URL)  # type: ignore[arg-type]
+        return PgConn(conn)
     conn = sqlite3.connect(DB_PATH, timeout=10, detect_types=sqlite3.PARSE_DECLTYPES)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 def init_db():
-    db=get_db(); c=db.cursor()
-    c.executescript("""
-    CREATE TABLE IF NOT EXISTS companies(
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      code TEXT UNIQUE NOT NULL,
-      created_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS users(
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('admin','manager')),
-      company_id INTEGER,
-      created_at TEXT NOT NULL,
-      FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE SET NULL
-    );
-    CREATE TABLE IF NOT EXISTS reports(
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      company_id INTEGER NOT NULL,
-      company_code TEXT NOT NULL,
-      subject TEXT,
-      content TEXT NOT NULL,
-      category TEXT NOT NULL,
-      status TEXT NOT NULL,
-      reporter_contact TEXT,
-      anon_token TEXT UNIQUE NOT NULL,
-      anon_pin TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      done_so_far TEXT,
-      wants_feedback TEXT,
-      memorable TEXT,
-      FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE
-    );
-    -- messages.channel: 'rep' (admin<->reporter), 'mgr' (admin<->manager)
-    CREATE TABLE IF NOT EXISTS messages(
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      report_id INTEGER NOT NULL,
-      channel TEXT NOT NULL CHECK(channel IN ('rep','mgr')),
-      sender TEXT NOT NULL CHECK(sender IN ('admin','manager','reporter')),
-      body TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      FOREIGN KEY(report_id) REFERENCES reports(id) ON DELETE CASCADE
-    );
-    CREATE TABLE IF NOT EXISTS settings(
-      key TEXT PRIMARY KEY,
-      value TEXT,
-      updated_at TEXT NOT NULL
-    );
-    """)
+    db = get_db(); c = db.cursor()
+    if USE_POSTGRES:
+        c.executescript("""
+        CREATE TABLE IF NOT EXISTS companies(
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          code TEXT UNIQUE NOT NULL,
+          created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS users(
+          id SERIAL PRIMARY KEY,
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL CHECK(role IN ('admin','manager')),
+          company_id INTEGER,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE SET NULL
+        );
+        CREATE TABLE IF NOT EXISTS reports(
+          id SERIAL PRIMARY KEY,
+          company_id INTEGER NOT NULL,
+          company_code TEXT NOT NULL,
+          subject TEXT,
+          content TEXT NOT NULL,
+          category TEXT NOT NULL,
+          status TEXT NOT NULL,
+          reporter_contact TEXT,
+          anon_token TEXT UNIQUE NOT NULL,
+          anon_pin TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          done_so_far TEXT,
+          wants_feedback TEXT,
+          memorable TEXT,
+          FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS messages(
+          id SERIAL PRIMARY KEY,
+          report_id INTEGER NOT NULL,
+          channel TEXT NOT NULL CHECK(channel IN ('rep','mgr')),
+          sender TEXT NOT NULL CHECK(sender IN ('admin','manager','reporter')),
+          body TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY(report_id) REFERENCES reports(id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS settings(
+          key TEXT PRIMARY KEY,
+          value TEXT,
+          updated_at TEXT NOT NULL
+        );
+        """)
+    else:
+        c.executescript("""
+        CREATE TABLE IF NOT EXISTS companies(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          code TEXT UNIQUE NOT NULL,
+          created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS users(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL CHECK(role IN ('admin','manager')),
+          company_id INTEGER,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE SET NULL
+        );
+        CREATE TABLE IF NOT EXISTS reports(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          company_id INTEGER NOT NULL,
+          company_code TEXT NOT NULL,
+          subject TEXT,
+          content TEXT NOT NULL,
+          category TEXT NOT NULL,
+          status TEXT NOT NULL,
+          reporter_contact TEXT,
+          anon_token TEXT UNIQUE NOT NULL,
+          anon_pin TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          done_so_far TEXT,
+          wants_feedback TEXT,
+          memorable TEXT,
+          FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE
+        );
+        -- messages.channel: 'rep' (admin<->reporter), 'mgr' (admin<->manager)
+        CREATE TABLE IF NOT EXISTS messages(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          report_id INTEGER NOT NULL,
+          channel TEXT NOT NULL CHECK(channel IN ('rep','mgr')),
+          sender TEXT NOT NULL CHECK(sender IN ('admin','manager','reporter')),
+          body TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY(report_id) REFERENCES reports(id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS settings(
+          key TEXT PRIMARY KEY,
+          value TEXT,
+          updated_at TEXT NOT NULL
+        );
+        """)
     # Seed company, admin, manager, demo reports if empty
-    if c.execute("SELECT COUNT(*) FROM companies").fetchone()[0]==0:
+    if c.execute("SELECT COUNT(*) AS c FROM companies").fetchone()["c"]==0:
         for nm in ["Bright Care","CycleSoft","Acme Health"]:
             code = gen_code()
             c.execute("INSERT INTO companies(name,code,created_at) VALUES(?,?,?)",(nm,code,now_iso()))
-    if c.execute("SELECT COUNT(*) FROM users WHERE role='admin'").fetchone()[0]==0:
+    if c.execute("SELECT COUNT(*) AS c FROM users WHERE role='admin'").fetchone()["c"]==0:
         from werkzeug.security import generate_password_hash
         c.execute("INSERT INTO users(email,password_hash,role,company_id,created_at) VALUES(?,?,?,?,?)",
                   ("admin@admin.com", generate_password_hash("password"), "admin", None, now_iso()))
-    if c.execute("SELECT COUNT(*) FROM users WHERE role='manager'").fetchone()[0]==0:
+    if c.execute("SELECT COUNT(*) AS c FROM users WHERE role='manager'").fetchone()["c"]==0:
         from werkzeug.security import generate_password_hash
         comp = c.execute("SELECT id FROM companies ORDER BY id LIMIT 1").fetchone()
         if comp:
             c.execute("INSERT INTO users(email,password_hash,role,company_id,created_at) VALUES(?,?,?,?,?)",
                       ("manager@brightcare.com", generate_password_hash("manager1"), "manager", comp["id"], now_iso()))
-    if c.execute("SELECT COUNT(*) FROM reports").fetchone()[0]==0:
+    if c.execute("SELECT COUNT(*) AS c FROM reports").fetchone()["c"]==0:
         comps=c.execute("SELECT id,code FROM companies").fetchall()
         for i in range(8):
             cc = comps[i%len(comps)]
             token = secrets.token_urlsafe(10)
             pin   = str(random.randint(100000,999999))
-            c.execute("""INSERT INTO reports(company_id,company_code,subject,content,category,status,reporter_contact,anon_token,anon_pin,created_at)
-                         VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            cur = c.execute("""INSERT INTO reports(company_id,company_code,subject,content,category,status,reporter_contact,anon_token,anon_pin,created_at)
+                         VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id""",
                          (cc["id"], cc["code"], f"Demo subject {i+1}", f"Demo content {i+1}", random.choice(CATEGORIES),
                           random.choice(STATUSES), "", token, pin, now_iso()))
-            rid=c.lastrowid
+            rid = cur.fetchone()["id"]
             c.execute("INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)",
                       (rid,"rep","reporter","Hello, I want to remain anonymous.", now_iso()))
     # settings placeholders
@@ -155,8 +258,17 @@ def init_db():
       "openai_key":"",
       "youtube_url":"",
     }
-    for k,v in defaults.items():
-        c.execute("INSERT OR IGNORE INTO settings(key,value,updated_at) VALUES(?,?,?)", (k,v,now_iso()))
+    for k, v in defaults.items():
+        if USE_POSTGRES:
+            c.execute(
+                "INSERT INTO settings(key,value,updated_at) VALUES(?,?,?) ON CONFLICT (key) DO NOTHING",
+                (k, v, now_iso()),
+            )
+        else:
+            c.execute(
+                "INSERT OR IGNORE INTO settings(key,value,updated_at) VALUES(?,?,?)",
+                (k, v, now_iso()),
+            )
     db.commit(); db.close()
 
 def gen_code():
@@ -191,10 +303,16 @@ def get_setting(key):
 
 def set_setting(key,val):
     with closing(get_db()) as db:
-        db.execute(
-            "REPLACE INTO settings(key,value,updated_at) VALUES(?,?,?)",
-            (key, val, now_iso()),
-        )
+        if USE_POSTGRES:
+            db.execute(
+                "INSERT INTO settings(key,value,updated_at) VALUES(?,?,?) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=EXCLUDED.updated_at",
+                (key, val, now_iso()),
+            )
+        else:
+            db.execute(
+                "REPLACE INTO settings(key,value,updated_at) VALUES(?,?,?)",
+                (key, val, now_iso()),
+            )
         db.commit()
 
 # ----------------- routes: public
@@ -323,10 +441,10 @@ def report():
             return render_template("report.html", captcha_a=a, captcha_b=b)
 
         token=secrets.token_urlsafe(12); pin=f"{secrets.randbelow(900000)+100000}"
-        db.execute("""INSERT INTO reports(company_id,company_code,subject,content,category,status,reporter_contact,anon_token,anon_pin,created_at,done_so_far,wants_feedback,memorable)
-                      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        cur=db.execute("""INSERT INTO reports(company_id,company_code,subject,content,category,status,reporter_contact,anon_token,anon_pin,created_at,done_so_far,wants_feedback,memorable)
+                      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id""",
                    (comp["id"], comp["code"], subject, content, category, "new", contact, token, pin, now_iso(), done_so_far, wants_feedback, memorable))
-        rid=db.execute("SELECT last_insert_rowid()").fetchone()[0]
+        rid=cur.fetchone()["id"]
         db.execute("INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)",
                    (rid,"rep","reporter","Report submitted.", now_iso()))
         db.commit(); db.close()
@@ -784,9 +902,15 @@ def manager_messages_thread(rid):
 def manager_notifications():
     notes=[]
     cid=session.get("company_id"); db=get_db()
-    cnt=db.execute("""SELECT COUNT(*) c FROM messages m JOIN reports r ON r.id=m.report_id
-                      WHERE r.company_id=? AND m.channel='mgr' AND m.sender='admin'
-                      AND datetime(m.created_at) > datetime('now','-7 day')""",(cid,)).fetchone()["c"]
+    if USE_POSTGRES:
+        sql="""SELECT COUNT(*) c FROM messages m JOIN reports r ON r.id=m.report_id
+                 WHERE r.company_id=? AND m.channel='mgr' AND m.sender='admin'
+                 AND m.created_at::timestamp > NOW() - INTERVAL '7 days'"""
+    else:
+        sql="""SELECT COUNT(*) c FROM messages m JOIN reports r ON r.id=m.report_id
+                 WHERE r.company_id=? AND m.channel='mgr' AND m.sender='admin'
+                 AND datetime(m.created_at) > datetime('now','-7 day')"""
+    cnt=db.execute(sql,(cid,)).fetchone()["c"]
     if cnt: notes.append(f"{cnt} new admin message(s) in last 7 days.")
     db.close()
     return render_template("manager/notifications.html", notes=notes)
