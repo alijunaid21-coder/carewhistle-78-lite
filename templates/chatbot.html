@@ -1,0 +1,27 @@
+<div id="chatbot-box" class="fixed bottom-20 right-4 w-80 max-w-full bg-white border rounded-lg shadow-lg hidden flex-col h-96">
+  <div id="chatbot-log" class="p-2 flex-1 overflow-y-auto text-sm"></div>
+  <form id="chatbot-form" class="flex border-t">
+    <input id="chatbot-input" class="flex-1 p-2 text-sm" placeholder="Ask a question..." />
+    <button class="px-3 text-white bg-neon-blue">Send</button>
+  </form>
+</div>
+<button id="chatbot-toggle" class="fixed bottom-4 right-4 w-12 h-12 rounded-full bg-neon-blue text-white shadow-lg">💬</button>
+<script>
+  const toggle=document.getElementById('chatbot-toggle');
+  const box=document.getElementById('chatbot-box');
+  const form=document.getElementById('chatbot-form');
+  const input=document.getElementById('chatbot-input');
+  const log=document.getElementById('chatbot-log');
+  toggle.addEventListener('click',()=>{box.classList.toggle('hidden'); input.focus();});
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const msg=input.value.trim();
+    if(!msg) return;
+    log.innerHTML+=`<div class="text-right mb-1">${msg}</div>`;
+    input.value='';
+    const r=await fetch('/chatbot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+    const data=await r.json();
+    log.innerHTML+=`<div class="text-left mb-1 text-neon-blue">${data.reply}</div>`;
+    log.scrollTop=log.scrollHeight;
+  });
+</script>
