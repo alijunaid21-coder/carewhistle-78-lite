@@ -121,6 +121,11 @@ def gen_code():
     alphabet="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
     return "".join(random.choice(alphabet) for _ in range(5))
 
+
+# ensure database and media directory exist even when running via WSGI
+os.makedirs(MEDIA_DIR, exist_ok=True)
+init_db()
+
 # ----------------- auth helpers
 def login_required(f):
     @wraps(f)
@@ -541,6 +546,4 @@ def e403(e): return render_template("error.html", code=403, message="Forbidden")
 def e404(e): return render_template("error.html", code=404, message="Not Found"), 404
 
 if __name__=="__main__":
-    os.makedirs(MEDIA_DIR, exist_ok=True)
-    init_db()
     app.run(debug=True)
