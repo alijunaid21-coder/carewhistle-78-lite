@@ -7,6 +7,14 @@
       <li>Unlimited report recipients</li><li>Anonymous reporting</li><li>Separate chats per report</li>
       <li>Manager & Admin portals</li><li>Media uploads</li><li>ISO-friendly, GDPR-aware</li>
     </ul>
+    <div class="mt-6 flex gap-2">
+      <form action="{{ url_for('checkout_stripe') }}" method="post">
+        <button class="px-4 py-2 rounded bg-neon-blue text-white">Pay with Stripe</button>
+      </form>
+      <form action="{{ url_for('checkout_paypal') }}" method="post">
+        <button class="px-4 py-2 rounded bg-neutral-800 text-white">Pay with PayPal</button>
+      </form>
+    </div>
   </div>
 </section>
 {% endblock %}
