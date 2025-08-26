@@ -148,7 +148,15 @@ def get_setting(key):
     return r["value"] if r else ""
 
 def set_setting(key,val):
-    db=get_db(); db.execute("REPLACE INTO settings(key,value,updated_at) VALUES(?,?,?)", (key,val,now_iso())); db.commit(); db.close()
+    db = get_db()
+    try:
+        db.execute(
+            "REPLACE INTO settings(key,value,updated_at) VALUES(?,?,?)",
+            (key, val, now_iso()),
+        )
+        db.commit()
+    finally:
+        db.close()
 
 # ----------------- routes: public
 @app.route("/")
