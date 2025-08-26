@@ -3,7 +3,8 @@
 <form method="post" class="bg-white rounded-xl p-4 border shadow-glass grid md:grid-cols-2 gap-4">
   <div><label class="block text-sm mb-1">SMTP URL</label><input name="smtp_url" value="{{ settings.smtp_url or '' }}" class="w-full rounded-lg border px-3 py-2"></div>
   <div><label class="block text-sm mb-1">Stripe Key</label><input name="stripe_key" value="{{ settings.stripe_key or '' }}" class="w-full rounded-lg border px-3 py-2"></div>
-  <div><label class="block text-sm mb-1">PayPal Key</label><input name="paypal_key" value="{{ settings.paypal_key or '' }}" class="w-full rounded-lg border px-3 py-2"></div>
+  <div><label class="block text-sm mb-1">PayPal Client ID</label><input name="paypal_client_id" value="{{ settings.paypal_client_id or '' }}" class="w-full rounded-lg border px-3 py-2"></div>
+  <div><label class="block text-sm mb-1">PayPal Client Secret</label><input name="paypal_client_secret" value="{{ settings.paypal_client_secret or '' }}" class="w-full rounded-lg border px-3 py-2"></div>
   <div><label class="block text-sm mb-1">Postgres URL</label><input name="pg_url" value="{{ settings.pg_url or '' }}" class="w-full rounded-lg border px-3 py-2"></div>
   <div><label class="block text-sm mb-1">Mongo URL</label><input name="mongo_url" value="{{ settings.mongo_url or '' }}" class="w-full rounded-lg border px-3 py-2"></div>
   <div><label class="block text-sm mb-1">OpenAI Key</label><input name="openai_key" value="{{ settings.openai_key or '' }}" class="w-full rounded-lg border px-3 py-2"></div>
