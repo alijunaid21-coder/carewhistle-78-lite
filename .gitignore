@@ -12,3 +12,6 @@ __pycache__/
 # Ignore OS files
 .DS_Store
 Thumbs.db
+
+# Ignore Node modules
+node_modules/

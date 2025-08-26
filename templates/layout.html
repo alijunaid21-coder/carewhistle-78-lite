@@ -4,22 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{{ title or "CareWhistle" }}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme:{
-        extend:{
-          colors:{
-            base: { bg:"#f7f8fb", card:"#ffffff", ink:"#111827", muted:"#6b7280" },
-            neon: { blue:"#3b82f6", green:"#22c55e", pink:"#ec4899", purple:"#8b5cf6", amber:"#f59e0b", cyan:"#06b6d4" }
-          },
-          boxShadow:{
-            glass:"0 10px 30px rgba(31,41,55,.08), inset 0 1px 0 rgba(255,255,255,.5)"
-          }
-        }
-      }
-    }
-  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='tailwind.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20fill%3D%27%23111827%27%20d%3D%27M8.5%209A6.5%206.5%200%200%200%202%2015.5A6.5%206.5%200%200%200%208.5%2022A6.5%206.5%200%200%200%2015%2015.5V13.91L22%2012V9H11V11H9V9H8.5M11%202V7H9V2H11M6.35%207.28c-.67.16-1.31.4-1.92.72L2.14%204.88%203.76%203.7%206.35%207.28M17.86%204.88%2016.32%207h-2.47L16.24%203.7l1.62%201.18Z%27/%3E%3C/svg%3E">
 </head>
