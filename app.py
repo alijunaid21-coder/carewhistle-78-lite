@@ -1,4 +1,4 @@
-import os, sqlite3, secrets, random
+import os, sqlite3, secrets, warnings
 
 # Optional PostgreSQL support. The application continues to run with SQLite
 # if the `DATABASE_URL` environment variable is not provided or the psycopg2
@@ -36,6 +36,8 @@ except Exception:  # ImportError or other issues
 
 load_dotenv()
 
+DEBUG = os.environ.get("FLASK_DEBUG", "0") == "1"
+
 APP_NAME = "CareWhistle v78-lite"
 BASE_DIR = os.path.dirname(__file__)
 DB_PATH  = os.path.join(BASE_DIR, "carewhistle.db")
@@ -50,11 +52,19 @@ STATUSES   = ["new","in_review","awaiting_info","resolved","closed"]
 CATEGORIES = ["Bribery","Fraud","Harassment","GDPR","Safety","Money laundering","Other"]
 
 app = Flask(__name__)
+secret_key = os.environ.get("SECRET_KEY")
+if not secret_key:
+    secret_key = secrets.token_hex(16)
+    warnings.warn(
+        "Using a temporary SECRET_KEY; set SECRET_KEY env var in production.",
+        RuntimeWarning,
+    )
 app.config.update(
-    SECRET_KEY=os.environ.get("SECRET_KEY","dev-secret-change-me"),
+    SECRET_KEY=secret_key,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    MAX_CONTENT_LENGTH=25*1024*1024
+    SESSION_COOKIE_SECURE=not DEBUG,
+    MAX_CONTENT_LENGTH=25*1024*1024,
 )
 
 @app.context_processor
@@ -239,11 +249,11 @@ def init_db():
         for i in range(8):
             cc = comps[i%len(comps)]
             token = secrets.token_urlsafe(10)
-            pin   = str(random.randint(100000,999999))
+            pin   = f"{secrets.randbelow(900000)+100000}"
             cur = c.execute("""INSERT INTO reports(company_id,company_code,subject,content,category,status,reporter_contact,anon_token,anon_pin,created_at)
                          VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id""",
-                         (cc["id"], cc["code"], f"Demo subject {i+1}", f"Demo content {i+1}", random.choice(CATEGORIES),
-                          random.choice(STATUSES), "", token, pin, now_iso()))
+                         (cc["id"], cc["code"], f"Demo subject {i+1}", f"Demo content {i+1}", secrets.choice(CATEGORIES),
+                          secrets.choice(STATUSES), "", token, pin, now_iso()))
             rid = cur.fetchone()["id"]
             c.execute("INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)",
                       (rid,"rep","reporter","Hello, I want to remain anonymous.", now_iso()))
@@ -273,7 +283,7 @@ def init_db():
 
 def gen_code():
     alphabet="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-    return "".join(random.choice(alphabet) for _ in range(5))
+    return "".join(secrets.choice(alphabet) for _ in range(5))
 
 # ----------------- auth helpers
 def login_required(f):
@@ -405,7 +415,7 @@ def checkout_paypal():
     return redirect(url_for("pricing"))
 
 def make_captcha():
-    a,b = random.randint(1,9), random.randint(1,9)
+    a,b = secrets.randbelow(9)+1, secrets.randbelow(9)+1
     session["captcha"]=(a,b,a+b); return a,b
 
 @app.route("/report", methods=["GET","POST"])
@@ -984,7 +994,7 @@ _initialize_app()
 
 
 if __name__ == "__main__":
-    # Bind to 0.0.0.0 so Replit and other PaaS providers can access the port
-    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
+    # Expose externally only when HOST is explicitly set
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    host = os.environ.get("HOST", "127.0.0.1")
+    app.run(host=host, port=port, debug=DEBUG)
