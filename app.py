@@ -570,10 +570,16 @@ def manager_notifications():
 def e403(e): return render_template("error.html", code=403, message="Forbidden"), 403
 @app.errorhandler(404)
 def e404(e): return render_template("error.html", code=404, message="Not Found"), 404
-
-if __name__=="__main__":
+def _initialize_app():
+    """Ensure required directories and database exist when the app starts."""
     os.makedirs(MEDIA_DIR, exist_ok=True)
     init_db()
+
+
+_initialize_app()
+
+
+if __name__ == "__main__":
     # Bind to 0.0.0.0 so Replit and other PaaS providers can access the port
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
