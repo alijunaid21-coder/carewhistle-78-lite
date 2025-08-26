@@ -547,4 +547,6 @@ def e404(e): return render_template("error.html", code=404, message="Not Found")
 if __name__=="__main__":
     os.makedirs(MEDIA_DIR, exist_ok=True)
     init_db()
-    app.run(debug=True)
+    # Bind to 0.0.0.0 so Replit and other PaaS providers can access the port
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
