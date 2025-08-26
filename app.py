@@ -633,20 +633,28 @@ def chatbot():
     message = (data.get("message") or "").strip()
     if not message:
         return {"reply": "Please say something."}
+
+    history = session.setdefault("chat_history", [])
+    history.append({"role": "user", "content": message})
+
     key = get_setting("openai_key") or os.environ.get("OPENAI_API_KEY")
     if not key:
-        return {"reply": "AI not configured."}
-    try:
-        from openai import OpenAI
-        client = OpenAI(api_key=key)
-        resp = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": message}],
-            max_tokens=200,
-        )
-        reply = resp.choices[0].message["content"].strip()
-    except Exception as e:
-        reply = f"Error: {e}"
+        reply = "AI not configured."
+    else:
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=key)
+            resp = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=history,
+                max_tokens=200,
+            )
+            reply = resp.choices[0].message["content"].strip()
+        except Exception as e:
+            reply = f"Error: {e}"
+
+    history.append({"role": "assistant", "content": reply})
+    session.modified = True
     return {"reply": reply}
 
 # ----------------- errors
