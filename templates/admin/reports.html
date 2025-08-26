@@ -15,13 +15,14 @@
 </form>
 <div class="bg-white rounded-xl p-4 border shadow-glass">
   <table class="w-full text-sm">
-    <tr class="text-left border-b"><th class="py-2">ID</th><th>Company</th><th>Category</th><th>Status</th><th>Created</th><th></th></tr>
+    <tr class="text-left border-b"><th class="py-2">ID</th><th>Company</th><th>Category</th><th>Status</th><th>Manager</th><th>Created</th><th></th></tr>
     {% for r in rows %}
       <tr class="border-b">
         <td class="py-2">{{ r.id }}</td>
         <td><code>{{ r.company_code }}</code></td>
         <td>{{ r.category }}</td>
         <td>{{ r.status }}</td>
+        <td>{{ r.manager_email or '—' }}</td>
         <td>{{ r.created_at[:19] }}</td>
         <td><a class="text-neon-blue" href="{{ url_for('admin_report_detail', rid=r.id) }}">Open</a></td>
       </tr>
