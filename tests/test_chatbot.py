@@ -24,3 +24,9 @@ def test_chatbot_history_and_no_key():
     with client.session_transaction() as sess:
         history = sess['chat_history']
         assert history[0]['role'] == 'system'
+
+
+def test_chatbot_faq_response():
+    resp = client.post('/chatbot', json={'message': 'How will my report be handled?'})
+    data = resp.get_json()
+    assert 'trained advisors compile a detailed concern report' in data['reply']
