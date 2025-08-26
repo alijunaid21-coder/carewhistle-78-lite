@@ -152,7 +152,9 @@ def init_db():
           done_so_far TEXT,
           wants_feedback TEXT,
           memorable TEXT,
-          FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE
+          manager_id INTEGER,
+          FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE,
+          FOREIGN KEY(manager_id) REFERENCES users(id) ON DELETE SET NULL
         );
         CREATE TABLE IF NOT EXISTS messages(
           id SERIAL PRIMARY KEY,
@@ -201,7 +203,9 @@ def init_db():
           done_so_far TEXT,
           wants_feedback TEXT,
           memorable TEXT,
-          FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE
+          manager_id INTEGER,
+          FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE,
+          FOREIGN KEY(manager_id) REFERENCES users(id) ON DELETE SET NULL
         );
         -- messages.channel: 'rep' (admin<->reporter), 'mgr' (admin<->manager)
         CREATE TABLE IF NOT EXISTS messages(
@@ -240,13 +244,32 @@ def init_db():
             cc = comps[i%len(comps)]
             token = secrets.token_urlsafe(10)
             pin   = str(random.randint(100000,999999))
-            cur = c.execute("""INSERT INTO reports(company_id,company_code,subject,content,category,status,reporter_contact,anon_token,anon_pin,created_at)
-                         VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id""",
-                         (cc["id"], cc["code"], f"Demo subject {i+1}", f"Demo content {i+1}", random.choice(CATEGORIES),
-                          random.choice(STATUSES), "", token, pin, now_iso()))
-            rid = cur.fetchone()["id"]
-            c.execute("INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)",
-                      (rid,"rep","reporter","Hello, I want to remain anonymous.", now_iso()))
+            query = (
+                """INSERT INTO reports(company_id,company_code,subject,content,category,status,reporter_contact,anon_token,anon_pin,created_at,manager_id)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?)"""
+                + (" RETURNING id" if USE_POSTGRES else "")
+            )
+            cur = c.execute(
+                query,
+                (
+                    cc["id"],
+                    cc["code"],
+                    f"Demo subject {i+1}",
+                    f"Demo content {i+1}",
+                    random.choice(CATEGORIES),
+                    random.choice(STATUSES),
+                    "",
+                    token,
+                    pin,
+                    now_iso(),
+                    None,
+                ),
+            )
+            rid = cur.fetchone()["id"] if USE_POSTGRES else cur.lastrowid
+            c.execute(
+                "INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)",
+                (rid, "rep", "reporter", "Hello, I want to remain anonymous.", now_iso()),
+            )
     # settings placeholders
     defaults = {
       "smtp_url":"",
@@ -441,10 +464,31 @@ def report():
             return render_template("report.html", captcha_a=a, captcha_b=b)
 
         token=secrets.token_urlsafe(12); pin=f"{secrets.randbelow(900000)+100000}"
-        cur=db.execute("""INSERT INTO reports(company_id,company_code,subject,content,category,status,reporter_contact,anon_token,anon_pin,created_at,done_so_far,wants_feedback,memorable)
-                      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id""",
-                   (comp["id"], comp["code"], subject, content, category, "new", contact, token, pin, now_iso(), done_so_far, wants_feedback, memorable))
-        rid=cur.fetchone()["id"]
+        query = (
+            """INSERT INTO reports(company_id,company_code,subject,content,category,status,reporter_contact,anon_token,anon_pin,created_at,done_so_far,wants_feedback,memorable,manager_id)
+                  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+            + (" RETURNING id" if USE_POSTGRES else "")
+        )
+        cur = db.execute(
+            query,
+            (
+                comp["id"],
+                comp["code"],
+                subject,
+                content,
+                category,
+                "new",
+                contact,
+                token,
+                pin,
+                now_iso(),
+                done_so_far,
+                wants_feedback,
+                memorable,
+                None,
+            ),
+        )
+        rid = cur.fetchone()["id"] if USE_POSTGRES else cur.lastrowid
         db.execute("INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)",
                    (rid,"rep","reporter","Report submitted.", now_iso()))
         db.commit(); db.close()
@@ -670,7 +714,7 @@ def admin_reports():
     status=(request.args.get("status") or "")
     category=(request.args.get("category") or "")
     code=(request.args.get("company_code") or "").strip().upper()
-    args=[]; sql="SELECT id,company_code,category,status,created_at FROM reports WHERE 1=1"
+    args=[]; sql="SELECT r.id,r.company_code,r.category,r.status,r.created_at,u.email AS manager_email FROM reports r LEFT JOIN users u ON u.id=r.manager_id WHERE 1=1"
     if q: sql+=" AND (subject LIKE ? OR content LIKE ?)"; args += [f"%{q}%",f"%{q}%"]
     if status: sql+=" AND status=?"; args.append(status)
     if category: sql+=" AND category=?"; args.append(category)
@@ -699,11 +743,17 @@ def admin_report_detail(rid):
         elif act=="msg_mgr":
             body=(request.form.get("body") or "").strip()
             if body: db.execute("INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)", (rid,"mgr","admin",body,now_iso()))
+        elif act=="assign_mgr":
+            mid=request.form.get("manager_id") or ""
+            try: mid=int(mid) if mid else None
+            except: mid=None
+            db.execute("UPDATE reports SET manager_id=? WHERE id=?", (mid, rid))
         db.commit()
+    managers=db.execute("SELECT id,email FROM users WHERE role='manager' AND company_id=?", (r["company_id"],)).fetchall()
     msgs_rep=db.execute("SELECT created_at,sender,body FROM messages WHERE report_id=? AND channel='rep' ORDER BY id",(rid,)).fetchall()
     msgs_mgr=db.execute("SELECT created_at,sender,body FROM messages WHERE report_id=? AND channel='mgr' ORDER BY id",(rid,)).fetchall()
     db.close()
-    return render_template("admin/report_detail.html", r=r, msgs_rep=msgs_rep, msgs_mgr=msgs_mgr, statuses=STATUSES)
+    return render_template("admin/report_detail.html", r=r, msgs_rep=msgs_rep, msgs_mgr=msgs_mgr, statuses=STATUSES, managers=managers)
 
 @app.route("/admin/users", methods=["GET","POST"])
 @login_required
@@ -813,7 +863,7 @@ def admin_notifications():
 @login_required
 @role_required("manager")
 def manager_overview():
-    cid=session.get("company_id")
+    mid=session.get("user_id")
     db=get_db()
     stats=db.execute(
         """
@@ -823,12 +873,12 @@ def manager_overview():
         SUM(CASE WHEN status IN ('resolved','closed') THEN 1 ELSE 0 END) AS closed,
         COUNT(*) AS assigned
       FROM reports
-      WHERE company_id=?
+      WHERE manager_id=?
     """,
-        (cid,),
+        (mid,),
     ).fetchone()
-    monthly=db.execute("SELECT substr(created_at,1,7) ym, COUNT(*) cnt FROM reports WHERE company_id=? GROUP BY ym ORDER BY ym",(cid,)).fetchall()
-    bycat=db.execute("SELECT category, COUNT(*) cnt FROM reports WHERE company_id=? GROUP BY category ORDER BY cnt DESC",(cid,)).fetchall()
+    monthly=db.execute("SELECT substr(created_at,1,7) ym, COUNT(*) cnt FROM reports WHERE manager_id=? GROUP BY ym ORDER BY ym",(mid,)).fetchall()
+    bycat=db.execute("SELECT category, COUNT(*) cnt FROM reports WHERE manager_id=? GROUP BY category ORDER BY cnt DESC",(mid,)).fetchall()
     db.close()
     return render_template("manager/overview.html", stats=stats, monthly=monthly, bycat=bycat)
 
@@ -837,7 +887,7 @@ def manager_overview():
 @login_required
 @role_required("manager")
 def manager_stats_api():
-    cid = session.get("company_id")
+    mid = session.get("user_id")
     db = get_db()
     stats = db.execute(
         """
@@ -847,17 +897,17 @@ def manager_stats_api():
         SUM(CASE WHEN status IN ('resolved','closed') THEN 1 ELSE 0 END) AS closed,
         COUNT(*) AS assigned
       FROM reports
-      WHERE company_id=?
+      WHERE manager_id=?
     """,
-        (cid,),
+        (mid,),
     ).fetchone()
     monthly = db.execute(
-        "SELECT substr(created_at,1,7) ym, COUNT(*) cnt FROM reports WHERE company_id=? GROUP BY ym ORDER BY ym",
-        (cid,),
+        "SELECT substr(created_at,1,7) ym, COUNT(*) cnt FROM reports WHERE manager_id=? GROUP BY ym ORDER BY ym",
+        (mid,),
     ).fetchall()
     bycat = db.execute(
-        "SELECT category, COUNT(*) cnt FROM reports WHERE company_id=? GROUP BY category ORDER BY cnt DESC",
-        (cid,),
+        "SELECT category, COUNT(*) cnt FROM reports WHERE manager_id=? GROUP BY category ORDER BY cnt DESC",
+        (mid,),
     ).fetchall()
     db.close()
     return {
@@ -874,10 +924,10 @@ def manager_stats_api():
 @login_required
 @role_required("manager")
 def manager_messages():
-    cid=session.get("company_id"); db=get_db()
+    mid=session.get("user_id"); db=get_db()
     rows=db.execute("""SELECT r.id, r.company_code, MAX(m.created_at) AS updated
                        FROM reports r LEFT JOIN messages m ON m.report_id=r.id AND m.channel='mgr'
-                       WHERE r.company_id=? GROUP BY r.id ORDER BY r.id DESC""",(cid,)).fetchall()
+                       WHERE r.manager_id=? GROUP BY r.id ORDER BY r.id DESC""",(mid,)).fetchall()
     db.close()
     return render_template("manager/messages.html", reports=rows)
 
@@ -885,10 +935,10 @@ def manager_messages():
 @login_required
 @role_required("manager")
 def manager_messages_thread(rid):
-    cid=session.get("company_id")
+    mid=session.get("user_id")
     db=get_db()
-    r=db.execute("SELECT id,company_id,company_code FROM reports WHERE id=?", (rid,)).fetchone()
-    if not r or r["company_id"]!=cid: db.close(); abort(403)
+    r=db.execute("SELECT id,manager_id,company_code FROM reports WHERE id=?", (rid,)).fetchone()
+    if not r or r["manager_id"]!=mid: db.close(); abort(403)
     if request.method=="POST":
         body=(request.form.get("body") or "").strip()
         if body: db.execute("INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)",(rid,"mgr","manager",body,now_iso())); db.commit()
@@ -901,16 +951,16 @@ def manager_messages_thread(rid):
 @role_required("manager")
 def manager_notifications():
     notes=[]
-    cid=session.get("company_id"); db=get_db()
+    mid=session.get("user_id"); db=get_db()
     if USE_POSTGRES:
         sql="""SELECT COUNT(*) c FROM messages m JOIN reports r ON r.id=m.report_id
-                 WHERE r.company_id=? AND m.channel='mgr' AND m.sender='admin'
+                 WHERE r.manager_id=? AND m.channel='mgr' AND m.sender='admin'
                  AND m.created_at::timestamp > NOW() - INTERVAL '7 days'"""
     else:
         sql="""SELECT COUNT(*) c FROM messages m JOIN reports r ON r.id=m.report_id
-                 WHERE r.company_id=? AND m.channel='mgr' AND m.sender='admin'
+                 WHERE r.manager_id=? AND m.channel='mgr' AND m.sender='admin'
                  AND datetime(m.created_at) > datetime('now','-7 day')"""
-    cnt=db.execute(sql,(cid,)).fetchone()["c"]
+    cnt=db.execute(sql,(mid,)).fetchone()["c"]
     if cnt: notes.append(f"{cnt} new admin message(s) in last 7 days.")
     db.close()
     return render_template("manager/notifications.html", notes=notes)
