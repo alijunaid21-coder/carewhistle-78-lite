@@ -272,7 +272,7 @@ def report():
         if ans!=a[2]:
             flash("CAPTCHA wrong. Please try again.","warning"); 
             a,b = make_captcha()
-            return render_template("report.html", captcha_a=a, captcha_b=b, categories=CATEGORIES)
+            return render_template("report.html", captcha_a=a, captcha_b=b)
 
         code=(request.form.get("company_code") or "").strip().upper()
         db=get_db()
@@ -280,7 +280,7 @@ def report():
         if not comp:
             db.close(); flash("Invalid Company Code.","danger")
             a,b = make_captcha()
-            return render_template("report.html", captcha_a=a, captcha_b=b, categories=CATEGORIES)
+            return render_template("report.html", captcha_a=a, captcha_b=b)
 
         subject=(request.form.get("subject") or "").strip()
         content=(request.form.get("content") or "").strip()
@@ -293,7 +293,7 @@ def report():
         if not content:
             db.close(); flash("Please describe your concern.","warning")
             a,b = make_captcha()
-            return render_template("report.html", captcha_a=a, captcha_b=b, categories=CATEGORIES)
+            return render_template("report.html", captcha_a=a, captcha_b=b)
 
         token=secrets.token_urlsafe(12); pin=f"{secrets.randbelow(900000)+100000}"
         db.execute("""INSERT INTO reports(company_id,company_code,subject,content,category,status,reporter_contact,anon_token,anon_pin,created_at,done_so_far,wants_feedback,memorable)
@@ -305,7 +305,7 @@ def report():
         db.commit(); db.close()
         return render_template("report_success.html", token=token, pin=pin)
     a,b = make_captcha()
-    return render_template("report.html", captcha_a=a, captcha_b=b, categories=CATEGORIES)
+    return render_template("report.html", captcha_a=a, captcha_b=b)
 
 @app.route("/follow", methods=["GET","POST"])
 def follow():
