@@ -19,6 +19,11 @@ app.config.update(
     MAX_CONTENT_LENGTH=25*1024*1024
 )
 
+@app.context_processor
+def inject_current_year():
+    """Expose the current year for use in templates."""
+    return {"current_year": datetime.now().year}
+
 def now_iso(): return datetime.now(timezone.utc).isoformat()
 
 def get_db():
@@ -533,6 +538,29 @@ def manager_notifications():
     if cnt: notes.append(f"{cnt} new admin message(s) in last 7 days.")
     db.close()
     return render_template("manager/notifications.html", notes=notes)
+
+# ----------------- AI chatbot
+@app.route("/chatbot", methods=["POST"])
+def chatbot():
+    data = request.get_json() or {}
+    message = (data.get("message") or "").strip()
+    if not message:
+        return {"reply": "Please say something."}
+    key = get_setting("openai_key") or os.environ.get("OPENAI_API_KEY")
+    if not key:
+        return {"reply": "AI not configured."}
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=key)
+        resp = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": message}],
+            max_tokens=200,
+        )
+        reply = resp.choices[0].message["content"].strip()
+    except Exception as e:
+        reply = f"Error: {e}"
+    return {"reply": reply}
 
 # ----------------- errors
 @app.errorhandler(403)
