@@ -123,8 +123,6 @@ def init_db():
             rid=c.lastrowid
             c.execute("INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)",
                       (rid,"rep","reporter","Hello, I want to remain anonymous.", now_iso()))
-            c.execute("INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)",
-                      (rid,"mgr","admin","Manager, we received a report. Please stand by.", now_iso()))
     # settings placeholders
     defaults = {
       "smtp_url":"", "stripe_key":"", "paypal_key":"", "pg_url":"", "mongo_url":"",
@@ -279,8 +277,6 @@ def report():
         rid=db.execute("SELECT last_insert_rowid()").fetchone()[0]
         db.execute("INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)",
                    (rid,"rep","reporter","Report submitted.", now_iso()))
-        db.execute("INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)",
-                   (rid,"mgr","admin","We received a report for your company. Admin will update you here.", now_iso()))
         db.commit(); db.close()
         return render_template("report_success.html", token=token, pin=pin)
     a,b = make_captcha()
