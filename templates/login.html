@@ -4,7 +4,7 @@
   <form method="post" class="bg-white rounded-xl p-6 border shadow-glass grid gap-4">
     <div><label class="block text-sm mb-1">Email</label><input name="email" required class="w-full rounded-lg border px-3 py-2" value="{{ request.form.email or '' }}"></div>
     <div><label class="block text-sm mb-1">Password</label><input name="password" type="password" required class="w-full rounded-lg border px-3 py-2"></div>
-    <button class="px-4 py-2 rounded-lg bg-neutral-800 text-white">Login</button>
+    <button class="px-4 py-2 rounded-lg bg-brand-blue text-white hover:bg-brand-indigo transition-colors">Login</button>
   </form>
 </section>
 {% endblock %}

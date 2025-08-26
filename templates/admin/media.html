@@ -2,7 +2,7 @@
 <h2 class="text-2xl font-extrabold mb-4">Media</h2>
 <form method="post" enctype="multipart/form-data" class="bg-white rounded-xl p-4 border shadow-glass flex items-end gap-3 mb-4">
   <div><label class="block text-sm mb-1">Upload file</label><input type="file" name="file" class="block"></div>
-  <button class="px-4 py-2 rounded-lg bg-neutral-800 text-white">Upload</button>
+  <button class="px-4 py-2 rounded-lg bg-brand-blue text-white hover:bg-brand-indigo transition-colors">Upload</button>
 </form>
 <div class="grid md:grid-cols-3 gap-4">
   {% for f in files %}
@@ -10,7 +10,7 @@
     <div class="text-sm break-all">{{ f }}</div>
     <div class="text-xs text-base-muted mb-2">/media/{{ f }}</div>
     <div class="flex gap-2">
-      <a class="px-3 py-1 rounded bg-neutral-200" href="{{ url_for('media_file', filename=f) }}" target="_blank">Open</a>
+      <a class="px-3 py-1 rounded border border-brand-blue text-brand-blue hover:bg-brand-blue hover:text-white transition-colors" href="{{ url_for('media_file', filename=f) }}" target="_blank">Open</a>
       <form method="post" action="{{ url_for('admin_media_delete', fname=f) }}" onsubmit="return confirm('Delete file?')">
         <button class="px-3 py-1 rounded bg-red-600 text-white">Delete</button>
       </form>

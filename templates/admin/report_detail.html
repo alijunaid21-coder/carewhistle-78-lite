@@ -11,7 +11,7 @@
       <select name="status" class="rounded-lg border px-3 py-2">
         {% for s in statuses %}<option value="{{ s }}" {% if s==r.status %}selected{% endif %}>{{ s }}</option>{% endfor %}
       </select>
-      <button class="ml-2 px-3 py-2 rounded-lg bg-neutral-800 text-white">Update</button>
+      <button class="ml-2 px-3 py-2 rounded-lg bg-brand-indigo text-white hover:bg-brand-blue transition-colors">Update</button>
     </form>
   </div>
   <div class="bg-white rounded-xl p-4 border shadow-glass">
@@ -24,7 +24,7 @@
         <form method="post" class="mt-2">
           <input type="hidden" name="action" value="msg_rep">
           <textarea name="body" rows="2" class="w-full rounded-lg border px-3 py-2" required></textarea>
-          <button class="mt-2 px-3 py-2 rounded-lg bg-neon-blue text-white">Send</button>
+          <button class="mt-2 px-3 py-2 rounded-lg bg-brand-blue text-white hover:bg-brand-indigo transition-colors">Send</button>
         </form>
       </div>
       <div>
@@ -35,7 +35,7 @@
         <form method="post" class="mt-2">
           <input type="hidden" name="action" value="msg_mgr">
           <textarea name="body" rows="2" class="w-full rounded-lg border px-3 py-2" required></textarea>
-          <button class="mt-2 px-3 py-2 rounded-lg bg-neon-purple text-white">Send</button>
+          <button class="mt-2 px-3 py-2 rounded-lg bg-brand-indigo text-white hover:bg-brand-blue transition-colors">Send</button>
         </form>
       </div>
     </div>

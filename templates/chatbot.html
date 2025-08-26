@@ -2,10 +2,10 @@
   <div id="chatbot-log" class="p-2 flex-1 overflow-y-auto text-sm"></div>
   <form id="chatbot-form" class="flex border-t">
     <input id="chatbot-input" class="flex-1 p-2 text-sm" placeholder="Ask a question..." />
-    <button class="px-3 text-white bg-neon-blue">Send</button>
+    <button class="px-3 text-white bg-brand-blue hover:bg-brand-indigo transition-colors">Send</button>
   </form>
 </div>
-<button id="chatbot-toggle" class="fixed bottom-4 right-4 w-12 h-12 rounded-full bg-neon-blue text-white shadow-lg">💬</button>
+<button id="chatbot-toggle" class="fixed bottom-4 right-4 w-12 h-12 rounded-full bg-brand-blue text-white shadow-lg hover:bg-brand-indigo transition-colors">💬</button>
 <script>
   const toggle=document.getElementById('chatbot-toggle');
   const box=document.getElementById('chatbot-box');
@@ -26,7 +26,7 @@
         body:JSON.stringify({message:msg})
       });
       const data=await r.json();
-      log.innerHTML+=`<div class="text-left mb-1 text-neon-blue">${data.reply}</div>`;
+      log.innerHTML+=`<div class="text-left mb-1 text-brand-blue">${data.reply}</div>`;
     } catch(err){
       log.innerHTML+=`<div class="text-left mb-1 text-red-600">Error: ${err}</div>`;
     }
