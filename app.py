@@ -1,4 +1,4 @@
-import os, sqlite3, secrets, random
+import os, sqlite3, secrets, random, re
 
 # Optional PostgreSQL support. The application continues to run with SQLite
 # if the `DATABASE_URL` environment variable is not provided or the psycopg2
@@ -959,10 +959,10 @@ def chatbot():
         ),
     }
 
-    msg_lower = message.lower()
+    msg_clean = re.sub(r"[^a-z0-9\s]", "", message.lower())
     reply = None
     for k, v in faq_answers.items():
-        if k in msg_lower:
+        if k in msg_clean:
             reply = v
             break
 
