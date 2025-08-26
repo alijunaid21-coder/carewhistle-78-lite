@@ -1,9 +1,28 @@
-import os, sqlite3, secrets, random, stripe, paypalrestsdk
+import os, sqlite3, secrets, random
+
+# Optional third‑party services. These modules are not required for the core
+# application features (such as authentication) so we load them lazily. This
+# prevents the entire application from failing to start when the packages are
+# missing, which is helpful in minimal or test environments.
+try:  # pragma: no cover - exercised indirectly in tests
+    import stripe  # type: ignore
+except Exception:  # ImportError or any other issue initialising the package
+    stripe = None  # type: ignore
+
+try:  # pragma: no cover - exercised indirectly in tests
+    import paypalrestsdk  # type: ignore
+except Exception:  # ImportError or any other issue initialising the package
+    paypalrestsdk = None  # type: ignore
 from contextlib import closing
 from datetime import datetime, timezone
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, send_from_directory
-from dotenv import load_dotenv
+# python-dotenv is optional; fall back to a no-op if it's not installed.
+try:  # pragma: no cover - trivial fallback
+    from dotenv import load_dotenv
+except Exception:  # ImportError or other issues
+    def load_dotenv():  # type: ignore
+        return None
 
 load_dotenv()
 
@@ -28,14 +47,16 @@ def inject_year():
     return {"current_year": datetime.now().year}
 
 # --- Stripe ---
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_dummy")
+if stripe:
+    stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_dummy")
 
 # --- PayPal ---
-paypalrestsdk.configure({
-    "mode": "sandbox",  # change to live when ready
-    "client_id": os.getenv("PAYPAL_CLIENT_ID", "dummy"),
-    "client_secret": os.getenv("PAYPAL_CLIENT_SECRET", "dummy")
-})
+if paypalrestsdk:
+    paypalrestsdk.configure({
+        "mode": "sandbox",  # change to live when ready
+        "client_id": os.getenv("PAYPAL_CLIENT_ID", "dummy"),
+        "client_secret": os.getenv("PAYPAL_CLIENT_SECRET", "dummy"),
+    })
 def now_iso(): return datetime.now(timezone.utc).isoformat()
 
 def get_db():
@@ -207,12 +228,16 @@ def checkout_stripe():
 
 @app.route("/checkout/paypal", methods=["POST"])
 def checkout_paypal():
+    if not paypalrestsdk:
+        flash("PayPal integration not configured.", "warning")
+        return redirect(url_for("pricing"))
+
     payment = paypalrestsdk.Payment({
         "intent": "sale",
         "payer": {"payment_method": "paypal"},
         "redirect_urls": {
             "return_url": url_for("pricing", _external=True) + "?paypal=success",
-            "cancel_url": url_for("pricing", _external=True) + "?paypal=canceled"
+            "cancel_url": url_for("pricing", _external=True) + "?paypal=canceled",
         },
         "transactions": [{
             "item_list": {"items": [{
@@ -220,11 +245,11 @@ def checkout_paypal():
                 "sku": "cw-plan",
                 "price": "150.00",
                 "currency": "GBP",
-                "quantity": 1
+                "quantity": 1,
             }]},
             "amount": {"total": "150.00", "currency": "GBP"},
-            "description": "Annual subscription"
-        }]
+            "description": "Annual subscription",
+        }],
     })
 
     if payment.create():
@@ -575,13 +600,18 @@ def admin_notifications():
 def manager_overview():
     cid=session.get("company_id")
     db=get_db()
-    stats=db.execute("""
+    stats=db.execute(
+        """
       SELECT
-        SUM(CASE WHEN status='new' THEN 1 ELSE 0 END) as new,
-        SUM(CASE WHEN status IN ('in_review','awaiting_info') THEN 1 ELSE 0 END) as inproc,
-        SUM(CASE WHEN status IN ('resolved','closed') THEN 1 ELSE 0 END) as closed,
-        (SELECT COUNT(*) FROM reports WHERE company_id=?) as assigned
-    """,(cid,)).fetchone()
+        SUM(CASE WHEN status='new' THEN 1 ELSE 0 END) AS new,
+        SUM(CASE WHEN status IN ('in_review','awaiting_info') THEN 1 ELSE 0 END) AS inproc,
+        SUM(CASE WHEN status IN ('resolved','closed') THEN 1 ELSE 0 END) AS closed,
+        COUNT(*) AS assigned
+      FROM reports
+      WHERE company_id=?
+    """,
+        (cid,),
+    ).fetchone()
     monthly=db.execute("SELECT substr(created_at,1,7) ym, COUNT(*) cnt FROM reports WHERE company_id=? GROUP BY ym ORDER BY ym",(cid,)).fetchall()
     bycat=db.execute("SELECT category, COUNT(*) cnt FROM reports WHERE company_id=? GROUP BY category ORDER BY cnt DESC",(cid,)).fetchall()
     db.close()
