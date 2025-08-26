@@ -65,7 +65,107 @@
   {% block body %}{% endblock %}
 
   <footer class="mt-16 py-8 text-center text-sm text-base-muted">
-    © {{ 2025 }} CareWhistle — Independent whistleblowing service. <span class="mx-2">•</span> help@carewhistle.app
+    © {{ 2025 }} CareWhistle — Independent whistleblowing service. <span class="mx-2">•</span> info@carewhistle.com
   </footer>
+  <div id="cw-chatbot" class="fixed bottom-4 right-4 text-sm">
+    <button id="cw-chatbot-toggle" class="bg-neon-blue text-white rounded-full w-12 h-12 shadow-lg flex items-center justify-center">💬</button>
+    <div id="cw-chatbot-box" class="hidden w-80 sm:w-96 bg-white rounded-lg shadow-lg border flex flex-col">
+      <div class="p-3 border-b font-bold flex justify-between">
+        <span>CareWhistle Chat</span>
+        <button id="cw-chatbot-close" class="text-xl leading-none">&times;</button>
+      </div>
+      <div id="cw-chatbot-messages" class="p-3 flex-1 overflow-y-auto space-y-2"></div>
+      <div id="cw-chatbot-options" class="p-3 border-t"></div>
+    </div>
+  </div>
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const toggle = document.getElementById('cw-chatbot-toggle');
+    const box = document.getElementById('cw-chatbot-box');
+    const closeBtn = document.getElementById('cw-chatbot-close');
+    const msgs = document.getElementById('cw-chatbot-messages');
+    const opts = document.getElementById('cw-chatbot-options');
+
+    function addMsg(sender, html) {
+      const wrapper = document.createElement('div');
+      wrapper.className = sender === 'bot' ? 'text-left' : 'text-right';
+      wrapper.innerHTML = `<div class="${sender === 'bot' ? 'bg-neutral-100' : 'bg-neon-blue text-white'} inline-block px-3 py-2 rounded-lg">${html}</div>`;
+      msgs.appendChild(wrapper);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function start() {
+      msgs.innerHTML = '';
+      opts.innerHTML = '';
+      addMsg('bot', 'What would you like help with?');
+      const buttons = [
+        {id:'contact', text:'Contact info@carewhistle.com'},
+        {id:'problem', text:'Report a problem or issue'},
+        {id:'report', text:'Submit a whistleblowing report'},
+        {id:'learn', text:'Learn more about CareWhistle'}
+      ];
+      buttons.forEach(b => {
+        const btn = document.createElement('button');
+        btn.textContent = b.text;
+        btn.className = 'block w-full text-left px-3 py-2 mt-2 rounded bg-neutral-100 hover:bg-neutral-200';
+        btn.onclick = () => handleChoice(b.id);
+        opts.appendChild(btn);
+      });
+    }
+
+    async function handleChoice(id) {
+      opts.innerHTML = '';
+      if (id === 'contact') {
+        addMsg('user', 'Contact info@carewhistle.com');
+        addMsg('bot', 'You can reach us at <a class="text-neon-blue underline" href="mailto:info@carewhistle.com">info@carewhistle.com</a>.');
+      } else if (id === 'report') {
+        addMsg('user', 'Submit a whistleblowing report');
+        addMsg('bot', 'Please use our <a class="text-neon-blue underline" href="/report">report page</a>.');
+      } else if (id === 'learn') {
+        addMsg('user', 'Learn more about CareWhistle');
+        addMsg('bot', 'CareWhistle is an independent whistleblowing service that enables secure and anonymous reporting for care organisations.');
+      } else if (id === 'problem') {
+        addMsg('user', 'Report a problem or issue');
+        addMsg('bot', 'Please describe the problem below:');
+        const form = document.createElement('form');
+        form.className = 'space-y-2 mt-2';
+        form.innerHTML = `\
+<input name="contact" type="text" placeholder="Your email (optional)" class="w-full border rounded px-2 py-1">\
+<textarea name="message" required placeholder="Describe the problem" class="w-full border rounded px-2 py-1"></textarea>\
+<button type="submit" class="bg-neon-blue text-white px-3 py-1 rounded">Submit</button>`;
+        opts.appendChild(form);
+        form.onsubmit = async (e) => {
+          e.preventDefault();
+          const fd = new FormData(form);
+          addMsg('user', fd.get('message'));
+          const res = await fetch('/problem', {method:'POST', body: fd});
+          if (res.ok) {
+            addMsg('bot', 'Thanks for letting us know. We will look into it.');
+          } else {
+            addMsg('bot', 'Sorry, there was an error submitting your problem.');
+          }
+          opts.innerHTML = '';
+          const restart = document.createElement('button');
+          restart.textContent = 'Start over';
+          restart.className = 'mt-4 px-3 py-1 rounded bg-neutral-100 hover:bg-neutral-200';
+          restart.onclick = start;
+          opts.appendChild(restart);
+        };
+        return;
+      }
+      const restart = document.createElement('button');
+      restart.textContent = 'Start over';
+      restart.className = 'mt-4 px-3 py-1 rounded bg-neutral-100 hover:bg-neutral-200';
+      restart.onclick = start;
+      opts.appendChild(restart);
+    }
+
+    toggle.onclick = () => {
+      box.classList.toggle('hidden');
+      if (!box.classList.contains('hidden')) start();
+    };
+    closeBtn.onclick = () => box.classList.add('hidden');
+  });
+  </script>
 </body>
 </html>
