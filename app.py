@@ -664,7 +664,18 @@ def chatbot():
     if not message:
         return {"reply": "Please say something."}
 
-    history = session.setdefault("chat_history", [])
+    history = session.setdefault(
+        "chat_history",
+        [
+            {
+                "role": "system",
+                "content": (
+                    "You are an AI assistant for a whistleblower reporting service. "
+                    "Provide confidential, supportive and general guidance to users."
+                ),
+            }
+        ],
+    )
     history.append({"role": "user", "content": message})
 
     key = get_setting("openai_key") or os.environ.get("OPENAI_API_KEY")
