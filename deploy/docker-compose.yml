@@ -4,6 +4,8 @@ services:
     build: ..
     command: gunicorn -w 3 -b 0.0.0.0:8000 app:app
     env_file: ../.env
+    environment:
+      DATABASE_URL: mysql+pymysql://careuser:change-me@db:3306/carewhistle?charset=utf8mb4
     volumes:
       - ../static/uploads:/app/static/uploads
     depends_on:
@@ -12,13 +14,14 @@ services:
       - appnet
 
   db:
-    image: postgres:15
+    image: mariadb:11
     environment:
-      POSTGRES_DB: carewhistle
-      POSTGRES_USER: carewhistle
-      POSTGRES_PASSWORD: change-me
+      MARIADB_DATABASE: carewhistle
+      MARIADB_USER: careuser
+      MARIADB_PASSWORD: change-me
+      MARIADB_ROOT_PASSWORD: root
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - dbdata:/var/lib/mysql
     networks:
       - appnet
 
@@ -37,7 +40,7 @@ services:
       - appnet
 
 volumes:
-  pgdata:
+  dbdata:
   certs:
 
 networks:
