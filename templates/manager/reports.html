@@ -1,0 +1,12 @@
+{% extends "layout.html" %}{% block body %}
+<div class="container">
+  <h2>Overview</h2>
+  <div class="card"><table class="table">
+    <tr><th>ID</th><th>CareWhistle ID</th><th>Subject</th><th>Category</th><th>Severity</th><th>Status</th><th>Created</th><th></th></tr>
+    {% for r in rows %}
+      <tr><td>{{ r.id }}</td><td>{{ r.care_id }}</td><td>{{ r.subject }}</td><td>{{ r.category }}</td><td>{{ r.severity }}</td><td>{{ r.status }}</td><td>{{ r.created_at.date() }}</td>
+        <td><a class="btn secondary" href="{{ url_for('report_detail', rid=r.id) }}">Open</a></td></tr>
+    {% endfor %}
+  </table></div>
+</div>
+{% endblock %}
