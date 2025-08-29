@@ -10,8 +10,8 @@
       theme:{
         extend:{
           colors:{
-            base: { bg:"#f7f8fb", card:"#ffffff", ink:"#111827", muted:"#6b7280" },
-            neon: { blue:"#3b82f6", green:"#22c55e", pink:"#ec4899", purple:"#8b5cf6", amber:"#f59e0b", cyan:"#06b6d4" }
+            base: { bg:"#ffffff", card:"#f8fafc", ink:"#1e293b", muted:"#64748b" },
+            neon: { blue:"#1e40af", green:"#0ea5e9", pink:"#f472b6", purple:"#3b82f6", amber:"#fbbf24", cyan:"#94a3b8" }
           },
           boxShadow:{
             glass:"0 10px 30px rgba(31,41,55,.08), inset 0 1px 0 rgba(255,255,255,.5)"
@@ -35,22 +35,22 @@
         <span class="bg-gradient-to-r from-neon-blue to-neon-purple bg-clip-text text-transparent">CareWhistle</span>
       </a>
       <nav class="ml-6 flex items-center gap-4 text-sm">
-        <a class="hover:text-neon-blue" href="{{ url_for('home') }}">Home</a>
-        <a class="hover:text-neon-blue" href="{{ url_for('how') }}">How it works</a>
-        <a class="hover:text-neon-blue" href="{{ url_for('report') }}">Make a Report</a>
-        <a class="hover:text-neon-blue" href="{{ url_for('pricing') }}">Plans & Pricing</a>
+        <a class="transition-colors hover:text-neon-blue" href="{{ url_for('home') }}">Home</a>
+        <a class="transition-colors hover:text-neon-blue" href="{{ url_for('how') }}">How it works</a>
+        <a class="transition-colors hover:text-neon-blue" href="{{ url_for('report') }}">Make a Report</a>
+        <a class="transition-colors hover:text-neon-blue" href="{{ url_for('pricing') }}">Plans & Pricing</a>
       </nav>
       <div class="ml-auto flex items-center gap-2">
-        <a class="px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200" href="{{ url_for('follow') }}">Case Portal</a>
+        <a class="px-3 py-1.5 rounded-lg border border-neon-blue text-neon-blue hover:bg-neon-blue hover:text-white transition-colors" href="{{ url_for('follow') }}">Case Portal</a>
         {% if session.get('user_id') %}
           {% if session.get('role')=='admin' %}
-            <a class="px-3 py-1.5 rounded-lg bg-neon-blue text-white" href="{{ url_for('admin_dashboard') }}">Admin</a>
+            <a class="px-3 py-1.5 rounded-lg bg-neon-blue text-white hover:opacity-90 transition-colors" href="{{ url_for('admin_dashboard') }}">Admin</a>
           {% elif session.get('role')=='manager' %}
-            <a class="px-3 py-1.5 rounded-lg bg-neon-purple text-white" href="{{ url_for('manager_overview') }}">Manager</a>
+            <a class="px-3 py-1.5 rounded-lg bg-neon-purple text-white hover:opacity-90 transition-colors" href="{{ url_for('manager_overview') }}">Manager</a>
           {% endif %}
-          <a class="px-3 py-1.5 rounded-lg bg-neutral-800 text-white" href="{{ url_for('logout') }}">Logout</a>
+          <a class="px-3 py-1.5 rounded-lg bg-neutral-800 text-white hover:opacity-90 transition-colors" href="{{ url_for('logout') }}">Logout</a>
         {% else %}
-          <a class="px-3 py-1.5 rounded-lg bg-neutral-800 text-white" href="{{ url_for('login') }}">Login</a>
+          <a class="px-3 py-1.5 rounded-lg bg-neutral-800 text-white hover:opacity-90 transition-colors" href="{{ url_for('login') }}">Login</a>
         {% endif %}
       </div>
     </div>
