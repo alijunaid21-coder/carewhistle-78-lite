@@ -1,14 +1,14 @@
 import os, sqlite3, secrets, warnings
 
-# Optional PostgreSQL support. The application continues to run with SQLite
-# if the `DATABASE_URL` environment variable is not provided or the psycopg2
-# package is unavailable. Import lazily so tests that don't require PostgreSQL
-# don't fail when the dependency is missing.
+# Optional MySQL/MariaDB support. The application continues to run with SQLite
+# if the `DATABASE_URL` environment variable is not provided or the PyMySQL
+# package is unavailable. Import lazily so tests that don't require MySQL don't
+# fail when the dependency is missing.
 try:  # pragma: no cover - optional dependency
-    import psycopg2  # type: ignore
-    import psycopg2.extras  # type: ignore
+    import pymysql  # type: ignore
+    import pymysql.cursors  # type: ignore
 except Exception:  # ImportError or any other issue initialising the package
-    psycopg2 = None  # type: ignore
+    pymysql = None  # type: ignore
 
 # Optional third‑party services. These modules are not required for the core
 # application features (such as authentication) so we load them lazily. This
@@ -43,10 +43,10 @@ BASE_DIR = os.path.dirname(__file__)
 DB_PATH  = os.path.join(BASE_DIR, "carewhistle.db")
 MEDIA_DIR= os.path.join(BASE_DIR, "media")
 
-# If DATABASE_URL is provided we attempt to use PostgreSQL. Otherwise the
+# If DATABASE_URL is provided we attempt to use MySQL/MariaDB. Otherwise the
 # application falls back to the bundled SQLite database file.
 DATABASE_URL = os.environ.get("DATABASE_URL")
-USE_POSTGRES = bool(DATABASE_URL and psycopg2)
+USE_MYSQL = bool(DATABASE_URL and pymysql)
 
 STATUSES   = ["new","in_review","awaiting_info","resolved","closed"]
 CATEGORIES = ["Bribery","Fraud","Harassment","GDPR","Safety","Money laundering","Other"]
@@ -84,10 +84,10 @@ if paypalrestsdk:
     })
 def now_iso(): return datetime.now(timezone.utc).isoformat()
 
-class PgConn:
+class MyConn:
     """Lightweight wrapper mimicking the subset of sqlite3.Connection used.
 
-    It converts SQLite-style ``?`` placeholders into ``%s`` for psycopg2 and
+    It converts SQLite-style ``?`` placeholders into ``%s`` for PyMySQL and
     returns a cursor so existing call sites (``db.execute(...).fetchone()``)
     continue to work.
     """
@@ -95,12 +95,11 @@ class PgConn:
     def __init__(self, conn):
         self.conn = conn
 
-    # Provide cursor() for compatibility with sqlite3.Connection
     def cursor(self):
         return self
 
     def execute(self, sql, params=()):
-        cur = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur = self.conn.cursor(pymysql.cursors.DictCursor)
         cur.execute(sql.replace("?", "%s"), params)
         return cur
 
@@ -120,9 +119,18 @@ class PgConn:
 
 
 def get_db():
-    if USE_POSTGRES:
-        conn = psycopg2.connect(DATABASE_URL)  # type: ignore[arg-type]
-        return PgConn(conn)
+    if USE_MYSQL:
+        from urllib.parse import urlparse
+        u = urlparse(DATABASE_URL)
+        conn = pymysql.connect(
+            host=u.hostname,
+            port=u.port or 3306,
+            user=u.username,
+            password=u.password,
+            database=u.path.lstrip('/'),
+            charset='utf8mb4'
+        )
+        return MyConn(conn)
     conn = sqlite3.connect(DB_PATH, timeout=10, detect_types=sqlite3.PARSE_DECLTYPES)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
@@ -130,26 +138,26 @@ def get_db():
 
 def init_db():
     db = get_db(); c = db.cursor()
-    if USE_POSTGRES:
+    if USE_MYSQL:
         c.executescript("""
         CREATE TABLE IF NOT EXISTS companies(
-          id SERIAL PRIMARY KEY,
+          id INT AUTO_INCREMENT PRIMARY KEY,
           name TEXT NOT NULL,
           code TEXT UNIQUE NOT NULL,
           created_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS users(
-          id SERIAL PRIMARY KEY,
+          id INT AUTO_INCREMENT PRIMARY KEY,
           email TEXT UNIQUE NOT NULL,
           password_hash TEXT NOT NULL,
-          role TEXT NOT NULL CHECK(role IN ('admin','manager')),
-          company_id INTEGER,
+          role VARCHAR(20) NOT NULL,
+          company_id INT,
           created_at TEXT NOT NULL,
           FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE SET NULL
         );
         CREATE TABLE IF NOT EXISTS reports(
-          id SERIAL PRIMARY KEY,
-          company_id INTEGER NOT NULL,
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          company_id INT NOT NULL,
           company_code TEXT NOT NULL,
           subject TEXT,
           content TEXT NOT NULL,
@@ -165,10 +173,10 @@ def init_db():
           FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE
         );
         CREATE TABLE IF NOT EXISTS messages(
-          id SERIAL PRIMARY KEY,
-          report_id INTEGER NOT NULL,
-          channel TEXT NOT NULL CHECK(channel IN ('rep','mgr')),
-          sender TEXT NOT NULL CHECK(sender IN ('admin','manager','reporter')),
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          report_id INT NOT NULL,
+          channel TEXT NOT NULL,
+          sender TEXT NOT NULL,
           body TEXT NOT NULL,
           created_at TEXT NOT NULL,
           FOREIGN KEY(report_id) REFERENCES reports(id) ON DELETE CASCADE
@@ -251,10 +259,10 @@ def init_db():
             token = secrets.token_urlsafe(10)
             pin   = f"{secrets.randbelow(900000)+100000}"
             cur = c.execute("""INSERT INTO reports(company_id,company_code,subject,content,category,status,reporter_contact,anon_token,anon_pin,created_at)
-                         VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id""",
+                         VALUES (?,?,?,?,?,?,?,?,?,?)""",
                          (cc["id"], cc["code"], f"Demo subject {i+1}", f"Demo content {i+1}", secrets.choice(CATEGORIES),
                           secrets.choice(STATUSES), "", token, pin, now_iso()))
-            rid = cur.fetchone()["id"]
+            rid = cur.lastrowid
             c.execute("INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)",
                       (rid,"rep","reporter","Hello, I want to remain anonymous.", now_iso()))
     # settings placeholders
@@ -269,9 +277,9 @@ def init_db():
       "youtube_url":"",
     }
     for k, v in defaults.items():
-        if USE_POSTGRES:
+        if USE_MYSQL:
             c.execute(
-                "INSERT INTO settings(key,value,updated_at) VALUES(?,?,?) ON CONFLICT (key) DO NOTHING",
+                "INSERT IGNORE INTO settings(key,value,updated_at) VALUES(?,?,?)",
                 (k, v, now_iso()),
             )
         else:
@@ -313,9 +321,9 @@ def get_setting(key):
 
 def set_setting(key,val):
     with closing(get_db()) as db:
-        if USE_POSTGRES:
+        if USE_MYSQL:
             db.execute(
-                "INSERT INTO settings(key,value,updated_at) VALUES(?,?,?) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=EXCLUDED.updated_at",
+                "INSERT INTO settings(key,value,updated_at) VALUES(?,?,?) ON DUPLICATE KEY UPDATE value=VALUES(value), updated_at=VALUES(updated_at)",
                 (key, val, now_iso()),
             )
         else:
@@ -912,10 +920,10 @@ def manager_messages_thread(rid):
 def manager_notifications():
     notes=[]
     cid=session.get("company_id"); db=get_db()
-    if USE_POSTGRES:
+    if USE_MYSQL:
         sql="""SELECT COUNT(*) c FROM messages m JOIN reports r ON r.id=m.report_id
                  WHERE r.company_id=? AND m.channel='mgr' AND m.sender='admin'
-                 AND m.created_at::timestamp > NOW() - INTERVAL '7 days'"""
+                 AND m.created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)"""
     else:
         sql="""SELECT COUNT(*) c FROM messages m JOIN reports r ON r.id=m.report_id
                  WHERE r.company_id=? AND m.channel='mgr' AND m.sender='admin'
