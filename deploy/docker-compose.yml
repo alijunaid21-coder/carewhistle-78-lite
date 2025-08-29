@@ -12,13 +12,14 @@ services:
       - appnet
 
   db:
-    image: postgres:15
+    image: mariadb:10.11
     environment:
-      POSTGRES_DB: carewhistle
-      POSTGRES_USER: carewhistle
-      POSTGRES_PASSWORD: change-me
+      MYSQL_DATABASE: carewhistle
+      MYSQL_USER: careuser
+      MYSQL_PASSWORD: Spaceship234
+      MYSQL_ROOT_PASSWORD: change-me
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - dbdata:/var/lib/mysql
     networks:
       - appnet
 
@@ -37,7 +38,7 @@ services:
       - appnet
 
 volumes:
-  pgdata:
+  dbdata:
   certs:
 
 networks:
