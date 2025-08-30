@@ -10,19 +10,20 @@ if os.path.exists('carewhistle.db'):
 
 import app
 importlib.reload(app)
+from fastapi.testclient import TestClient
 
-client = app.app.test_client()
+client = TestClient(app.app)
 
 
 def login(client, email, password):
-    return client.post('/login', data={'email': email, 'password': password}, follow_redirects=True)
+    return client.post('/login', data={'email': email, 'password': password})
 
 
 def test_reports_visible_only_after_assignment():
     # Manager should not see unassigned reports
     login(client, 'manager@brightcare.com', 'manager1')
     resp = client.get('/manager/messages')
-    assert b'Open' not in resp.data
+    assert 'Open' not in resp.text
 
     # Admin assigns report to manager
     login(client, 'admin@admin.com', 'password')
@@ -31,10 +32,10 @@ def test_reports_visible_only_after_assignment():
     mid, cid = row["id"], row["company_id"]
     rid = db.execute("SELECT id FROM reports WHERE company_id=? LIMIT 1", (cid,)).fetchone()["id"]
     db.close()
-    client.post(f'/admin/report/{rid}', data={'action': 'assign', 'manager_id': mid}, follow_redirects=True)
+    client.post(f'/admin/report/{rid}', data={'action': 'assign', 'manager_id': mid})
 
     # Manager can now see the report
     login(client, 'manager@brightcare.com', 'manager1')
     resp = client.get('/manager/messages')
-    assert b'Open' in resp.data
+    assert 'Open' in resp.text
 
