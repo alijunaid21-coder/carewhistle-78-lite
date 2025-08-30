@@ -1,9 +1,12 @@
-Flask>=3.0,<4
-gunicorn>=21,<22
+fastapi>=0.110,<1
+uvicorn>=0.23,<0.25
+click>=8.1.3
 python-dotenv
+python-multipart
+jinja2
+itsdangerous
 stripe
 paypalrestsdk
 openai>=1.0.0
 psycopg2-binary
 mysql-connector-python
-mariadb

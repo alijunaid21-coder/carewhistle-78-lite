@@ -1,1 +1,1 @@
-web: gunicorn -w 3 -k gthread --threads 4 -b 0.0.0.0:${PORT:-5000} app:app
+web: uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}
