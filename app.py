@@ -10,6 +10,18 @@ try:  # pragma: no cover - optional dependency
 except Exception:  # ImportError or any other issue initialising the package
     psycopg2 = None  # type: ignore
 
+# Optional MySQL support.
+try:  # pragma: no cover - optional dependency
+    import mysql.connector as mysql  # type: ignore
+except Exception:  # ImportError or any other issue initialising the package
+    mysql = None  # type: ignore
+
+# Optional MariaDB support.
+try:  # pragma: no cover - optional dependency
+    import mariadb  # type: ignore
+except Exception:  # ImportError or any other issue initialising the package
+    mariadb = None  # type: ignore
+
 # Optional third‑party services. These modules are not required for the core
 # application features (such as authentication) so we load them lazily. This
 # prevents the entire application from failing to start when the packages are
@@ -48,6 +60,22 @@ MEDIA_DIR= os.path.join(BASE_DIR, "media")
 DATABASE_URL = os.environ.get("DATABASE_URL")
 USE_POSTGRES = bool(DATABASE_URL and psycopg2)
 
+MYSQL_CFG = {
+    "host": os.environ.get("MYSQL_HOST"),
+    "user": os.environ.get("MYSQL_USER"),
+    "password": os.environ.get("MYSQL_PASSWORD"),
+    "database": os.environ.get("MYSQL_DATABASE"),
+}
+USE_MYSQL = bool(mysql and all(MYSQL_CFG.values()))
+
+MARIADB_CFG = {
+    "host": os.environ.get("MARIADB_HOST"),
+    "user": os.environ.get("MARIADB_USER"),
+    "password": os.environ.get("MARIADB_PASSWORD"),
+    "database": os.environ.get("MARIADB_DATABASE"),
+}
+USE_MARIADB = bool(mariadb and all(MARIADB_CFG.values()))
+
 STATUSES   = ["new","in_review","awaiting_info","resolved","closed"]
 CATEGORIES = ["Bribery","Fraud","Harassment","GDPR","Safety","Money laundering","Other"]
 
@@ -84,12 +112,12 @@ if paypalrestsdk:
     })
 def now_iso(): return datetime.now(timezone.utc).isoformat()
 
-class PgConn:
+class DBConn:
     """Lightweight wrapper mimicking the subset of sqlite3.Connection used.
 
-    It converts SQLite-style ``?`` placeholders into ``%s`` for psycopg2 and
-    returns a cursor so existing call sites (``db.execute(...).fetchone()``)
-    continue to work.
+    It converts SQLite-style ``?`` placeholders into ``%s`` for drivers that
+    expect it and returns dictionary rows so existing call sites continue to
+    work.
     """
 
     def __init__(self, conn):
@@ -100,7 +128,10 @@ class PgConn:
         return self
 
     def execute(self, sql, params=()):
-        cur = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        if psycopg2 and isinstance(self.conn, psycopg2.extensions.connection):
+            cur = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        else:
+            cur = self.conn.cursor(dictionary=True)
         cur.execute(sql.replace("?", "%s"), params)
         return cur
 
@@ -122,7 +153,13 @@ class PgConn:
 def get_db():
     if USE_POSTGRES:
         conn = psycopg2.connect(DATABASE_URL)  # type: ignore[arg-type]
-        return PgConn(conn)
+        return DBConn(conn)
+    if USE_MYSQL:
+        conn = mysql.connect(**MYSQL_CFG)  # type: ignore[arg-type]
+        return DBConn(conn)
+    if USE_MARIADB:
+        conn = mariadb.connect(**MARIADB_CFG)  # type: ignore[arg-type]
+        return DBConn(conn)
     conn = sqlite3.connect(DB_PATH, timeout=10, detect_types=sqlite3.PARSE_DECLTYPES)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
@@ -168,6 +205,57 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS messages(
           id SERIAL PRIMARY KEY,
+          report_id INTEGER NOT NULL,
+          channel TEXT NOT NULL CHECK(channel IN ('rep','mgr')),
+          sender TEXT NOT NULL CHECK(sender IN ('admin','manager','reporter')),
+          body TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY(report_id) REFERENCES reports(id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS settings(
+          key TEXT PRIMARY KEY,
+          value TEXT,
+          updated_at TEXT NOT NULL
+        );
+        """)
+    elif USE_MYSQL or USE_MARIADB:
+        c.executescript("""
+        CREATE TABLE IF NOT EXISTS companies(
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          name TEXT NOT NULL,
+          code TEXT UNIQUE NOT NULL,
+          created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS users(
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL CHECK(role IN ('admin','manager')),
+          company_id INTEGER,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE SET NULL
+        );
+        CREATE TABLE IF NOT EXISTS reports(
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          company_id INTEGER NOT NULL,
+          company_code TEXT NOT NULL,
+          manager_id INTEGER,
+          subject TEXT,
+          content TEXT NOT NULL,
+          category TEXT NOT NULL,
+          status TEXT NOT NULL,
+          reporter_contact TEXT,
+          anon_token TEXT UNIQUE NOT NULL,
+          anon_pin TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          done_so_far TEXT,
+          wants_feedback TEXT,
+          memorable TEXT,
+          FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE,
+          FOREIGN KEY(manager_id) REFERENCES users(id) ON DELETE SET NULL
+        );
+        CREATE TABLE IF NOT EXISTS messages(
+          id INT AUTO_INCREMENT PRIMARY KEY,
           report_id INTEGER NOT NULL,
           channel TEXT NOT NULL CHECK(channel IN ('rep','mgr')),
           sender TEXT NOT NULL CHECK(sender IN ('admin','manager','reporter')),
@@ -254,11 +342,18 @@ def init_db():
             cc = comps[i%len(comps)]
             token = secrets.token_urlsafe(10)
             pin   = f"{secrets.randbelow(900000)+100000}"
-            cur = c.execute("""INSERT INTO reports(company_id,company_code,subject,content,category,status,reporter_contact,anon_token,anon_pin,created_at)
+            if USE_POSTGRES:
+                cur = c.execute("""INSERT INTO reports(company_id,company_code,subject,content,category,status,reporter_contact,anon_token,anon_pin,created_at)
                          VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id""",
                          (cc["id"], cc["code"], f"Demo subject {i+1}", f"Demo content {i+1}", secrets.choice(CATEGORIES),
                           secrets.choice(STATUSES), "", token, pin, now_iso()))
-            rid = cur.fetchone()["id"]
+                rid = cur.fetchone()["id"]
+            else:
+                cur = c.execute("""INSERT INTO reports(company_id,company_code,subject,content,category,status,reporter_contact,anon_token,anon_pin,created_at)
+                         VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                         (cc["id"], cc["code"], f"Demo subject {i+1}", f"Demo content {i+1}", secrets.choice(CATEGORIES),
+                          secrets.choice(STATUSES), "", token, pin, now_iso()))
+                rid = cur.lastrowid
             c.execute("INSERT INTO messages(report_id,channel,sender,body,created_at) VALUES (?,?,?,?,?)",
                       (rid,"rep","reporter","Hello, I want to remain anonymous.", now_iso()))
     # settings placeholders
@@ -276,6 +371,11 @@ def init_db():
         if USE_POSTGRES:
             c.execute(
                 "INSERT INTO settings(key,value,updated_at) VALUES(?,?,?) ON CONFLICT (key) DO NOTHING",
+                (k, v, now_iso()),
+            )
+        elif USE_MYSQL or USE_MARIADB:
+            c.execute(
+                "INSERT IGNORE INTO settings(key,value,updated_at) VALUES(?,?,?)",
                 (k, v, now_iso()),
             )
         else:
