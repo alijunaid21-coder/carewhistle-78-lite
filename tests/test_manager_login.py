@@ -11,15 +11,16 @@ if os.path.exists('carewhistle.db'):
 
 import app
 importlib.reload(app)  # re-run init after potential DB removal
+from fastapi.testclient import TestClient
 
-client = app.app.test_client()
+client = TestClient(app.app)
 
 
 def login(client, email, password):
-    return client.post('/login', data={'email': email, 'password': password}, follow_redirects=True)
+    return client.post('/login', data={'email': email, 'password': password})
 
 
 def test_manager_can_login():
     resp = login(client, 'manager@brightcare.com', 'manager1')
     assert resp.status_code == 200
-    assert b'Overview' in resp.data
+    assert 'Overview' in resp.text
